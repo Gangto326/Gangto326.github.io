@@ -6,11 +6,12 @@ import { ExperienceShell } from '@/experiences/ExperienceShell'
 /**
  * MODA — 쓰레드풀 고갈 Bulkhead 시뮬레이터.
  *
- * 동시 요청 슬라이더 + Bulkhead ON/OFF 토글로, 블로킹 크롤링이 공유풀
+ * 동시 요청 슬라이더 + Bulkhead ON/OFF 토글로, 블로킹 크롤링(Selenium)이 공유풀
  * (ForkJoinPool.commonPool, 2vCPU→3슬롯)을 점유해 검색까지 연쇄 정지하는 문제(OFF)와,
- * 크롤링을 전용 Executor(max4/queue50)에 격리하고 검색은 fixed:10 별도 풀로 돌려
- * 서로 영향받지 않게 만든 개선(ON)을 비교한다. 큐 초과 시 무한 대기 대신 즉시 503+FCM으로
- * 실패(fail-fast). 수치는 docs/project4/DEMO_SPEC.md 실측값. 외부 의존성 없는 프론트 시뮬레이션.
+ * 크롤링을 경량 API 논블로킹으로 전환(Selenium은 소수 사이트만)하고 남는 블로킹 카드 작업
+ * (이미지 S3 업로드)은 전용 Executor(imageExecutor max4/queue50)에, 검색은 fixed:10 별도 풀로
+ * 격리한 개선(ON)을 비교한다. 큐 초과 시 무한 대기 대신 즉시 503+FCM으로 실패(fail-fast).
+ * 수치는 docs/project4/DEMO_SPEC.md·PORTFOLIO 실측값. 외부 의존성 없는 프론트 시뮬레이션.
  */
 
 type Mode = 'off' | 'on'
@@ -76,7 +77,7 @@ export function BulkheadDemo() {
     <ExperienceShell
       title="쓰레드풀 고갈 Bulkhead 시뮬레이터"
       subtitle="동시 요청 수를 올리고 Bulkhead를 켜고 꺼 보세요. 블로킹 크롤링이 공유풀을 점유해 검색까지 멈추는 문제와, 풀을 격리해 서로 보호하는 개선을 비교합니다."
-      hint="OFF는 크롤링(Selenium)을 executor 미지정 supplyAsync로 실행해 ForkJoinPool.commonPool(2vCPU→3슬롯)에서 돌던 개선 전 상태로, 동시 3~4건이면 검색·메인페이지까지 연쇄 정지합니다. ON은 크롤링을 전용 Executor(image core2/max4/queue50)로, 검색을 fixed:10 별도 풀로 격리해 서로 영향받지 않으며, 큐가 차면 무한 대기 대신 즉시 503+FCM으로 실패합니다(fail-fast). 수치는 실측값(동시 3→10건, CPU −77%, 크롤링 10~25초→0.17~0.57초)입니다."
+      hint="OFF는 블로킹 크롤링(Selenium)을 executor 미지정 supplyAsync로 실행해 ForkJoinPool.commonPool(2vCPU→3슬롯)에서 돌던 개선 전 상태로, 동시 3~4건이면 검색·메인페이지까지 연쇄 정지합니다. ON에서는 (1) 크롤링을 경량 API(Jsoup·GraphQL) 논블로킹 호출로 전환해 애초에 쓰레드를 붙잡지 않고(Selenium·Chromium은 경량 크롤링 불가 소수 사이트에만), (2) 남는 블로킹 작업(이미지 S3 업로드 등)은 전용 Executor(imageExecutor core2/max4/queue50)로, (3) 검색은 fixed:10 별도 풀로 격리합니다. 큐가 차면 무한 대기 대신 즉시 503+FCM으로 실패(fail-fast). 수치는 실측값(동시 3→10건, CPU −77%, 크롤링 10~25초→0.17~0.57초)입니다."
       onReset={reset}
     >
       {/* 모드 토글 + 슬라이더 */}
@@ -143,8 +144,8 @@ export function BulkheadDemo() {
             <>
               <Check className="h-4 w-4 shrink-0" />
               <span>
-                <strong>정상</strong> — 크롤링은 격리풀에 담기고 검색은 fixed:10에서 독립 응답합니다
-                {crawlRejected > 0 ? `. 큐(50) 초과분 ${crawlRejected}건은 즉시 503+FCM으로 실패(fail-fast).` : '.'}
+                <strong>정상</strong> — 크롤링은 논블로킹으로, 블로킹 카드 작업은 격리풀에, 검색은 fixed:10에서 독립 응답합니다
+                {crawlRejected > 0 ? `. 카드 격리풀 큐(50) 초과분 ${crawlRejected}건은 즉시 503+FCM으로 실패(fail-fast).` : '.'}
               </span>
             </>
           ) : (
@@ -258,7 +259,7 @@ function OffView({
         </div>
         {searchBlocked > 0 && (
           <p className="mt-2 text-xs leading-relaxed text-rose-500">
-            공유풀을 크롤링이 20초씩 붙잡아 검색이 슬롯을 얻지 못합니다 — 같은 commonPool을 쓰는 모든 비동기 작업이 함께 멈춥니다.
+            블로킹 크롤링(Selenium)이 5~30초씩 공유풀을 붙잡아 검색이 슬롯을 얻지 못합니다 — 같은 commonPool을 쓰는 모든 비동기 작업이 함께 멈춥니다.
           </p>
         )}
       </div>
@@ -266,7 +267,7 @@ function OffView({
   )
 }
 
-// ── ON: 격리풀 — 크롤링 전용풀 vs 검색 fixed10, 큐 초과 시 503+FCM ────────────
+// ── ON: 크롤링 논블로킹 전환 + 블로킹 카드 작업 격리풀 vs 검색 fixed10 ─────────
 function OnView({
   crawlRunning,
   crawlQueued,
@@ -281,78 +282,94 @@ function OnView({
   onOverload: () => void
 }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid gap-4 md:grid-cols-2">
-      {/* 크롤링 격리풀 */}
-      <div className="rounded-2xl border border-black/10 bg-white p-4 sm:p-5">
-        <PoolHeader icon={<Zap className="h-4 w-4" />} title="imageExecutor (격리)" sub={`max ${CRAWL_MAX} · queue ${CRAWL_QUEUE} · AbortPolicy`} tone="neutral" />
-        <div className="mt-3 flex flex-wrap gap-2">
-          {Array.from({ length: CRAWL_MAX }).map((_, i) => (
-            <Slot key={i} label={i < crawlRunning ? '크롤링' : '유휴'} color={i < crawlRunning ? AMBER : SLATE} filled={i < crawlRunning} long={false} />
-          ))}
-        </div>
-        {/* 큐 미터 */}
-        <div className="mt-3">
-          <div className="mb-1 flex justify-between text-[11px] text-gray-400">
-            <span>큐</span>
-            <span className="tabular-nums">
-              {crawlQueued} / {CRAWL_QUEUE}
-            </span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-            <motion.div className="h-full rounded-full" style={{ background: AMBER }} animate={{ width: `${(crawlQueued / CRAWL_QUEUE) * 100}%` }} transition={{ duration: 0.3 }} />
-          </div>
-        </div>
-        {/* 503 + FCM 튕김 */}
-        <div className="mt-3 min-h-[30px]">
-          <AnimatePresence>
-            {crawlRejected > 0 && (
-              <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="flex flex-wrap items-center gap-1.5">
-                {Array.from({ length: Math.min(crawlRejected, 6) }).map((_, i) => (
-                  <motion.span
-                    key={i}
-                    initial={{ scale: 0.6, opacity: 0, y: 0 }}
-                    animate={{ scale: 1, opacity: 1, y: [0, -6, 0] }}
-                    transition={{ delay: i * 0.06, y: { repeat: Infinity, duration: 1.2 } }}
-                    className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-medium text-white"
-                  >
-                    <Bell className="h-3 w-3" /> 503
-                  </motion.span>
-                ))}
-                <span className="text-[11px] text-rose-500">×{crawlRejected} 즉시 거부 + FCM 재시도 안내</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        <button
-          onClick={onOverload}
-          className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors ${
-            overload ? 'bg-rose-500 text-white' : 'border border-black/15 text-gray-600 hover:border-black'
-          }`}
-        >
-          <AlertTriangle className="h-3.5 w-3.5" />
-          {overload ? '폭주 해제' : `폭주 부하 (동시 ${BURST}건)`}
-        </button>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+      {/* 크롤링 경량·논블로킹 전환 안내 */}
+      <div className="flex items-start gap-2 rounded-xl border border-sky-200/70 bg-sky-50/50 px-3 py-2.5 text-xs leading-relaxed text-sky-700">
+        <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span>
+          <strong>크롤링은 경량 API(Jsoup·GraphQL) 논블로킹 호출로 전환</strong>해 쓰레드를 붙잡지 않습니다(0.17~0.57초, WebClient 체이닝).
+          Selenium·Chromium은 <strong>경량 크롤링이 불가능한 소수 사이트에만</strong> 켭니다.
+        </span>
       </div>
 
-      {/* 검색 격리풀 — 항상 정상 */}
-      <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/40 p-4 sm:p-5">
-        <PoolHeader icon={<Search className="h-4 w-4" />} title="executorService (검색)" sub={`fixed ${SEARCH_POOL} · 완전 격리`} tone="good" />
-        <div className="mt-3 flex flex-wrap gap-2">
-          {Array.from({ length: SEARCH_COUNT }).map((_, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.05 }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-2.5 py-1.5 text-xs text-emerald-600"
-            >
-              <Check className="h-3.5 w-3.5" /> 응답 완료
-            </motion.div>
-          ))}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* 카드 생성 격리풀 — 블로킹 I/O(이미지 S3 업로드·저장) */}
+        <div className="rounded-2xl border border-black/10 bg-white p-4 sm:p-5">
+          <PoolHeader
+            icon={<Zap className="h-4 w-4" />}
+            title="카드 생성 격리풀"
+            sub={`imageExecutor · 이미지 S3 업로드 · max ${CRAWL_MAX} · queue ${CRAWL_QUEUE} · AbortPolicy`}
+            tone="neutral"
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            {Array.from({ length: CRAWL_MAX }).map((_, i) => (
+              <Slot key={i} label={i < crawlRunning ? '카드 생성' : '유휴'} color={i < crawlRunning ? AMBER : SLATE} filled={i < crawlRunning} long={false} />
+            ))}
+          </div>
+          {/* 큐 미터 */}
+          <div className="mt-3">
+            <div className="mb-1 flex justify-between text-[11px] text-gray-400">
+              <span>큐</span>
+              <span className="tabular-nums">
+                {crawlQueued} / {CRAWL_QUEUE}
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+              <motion.div className="h-full rounded-full" style={{ background: AMBER }} animate={{ width: `${(crawlQueued / CRAWL_QUEUE) * 100}%` }} transition={{ duration: 0.3 }} />
+            </div>
+          </div>
+          {/* 503 + FCM 튕김 */}
+          <div className="mt-3 min-h-[30px]">
+            <AnimatePresence>
+              {crawlRejected > 0 && (
+                <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="flex flex-wrap items-center gap-1.5">
+                  {Array.from({ length: Math.min(crawlRejected, 6) }).map((_, i) => (
+                    <motion.span
+                      key={i}
+                      initial={{ scale: 0.6, opacity: 0, y: 0 }}
+                      animate={{ scale: 1, opacity: 1, y: [0, -6, 0] }}
+                      transition={{ delay: i * 0.06, y: { repeat: Infinity, duration: 1.2 } }}
+                      className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-medium text-white"
+                    >
+                      <Bell className="h-3 w-3" /> 503
+                    </motion.span>
+                  ))}
+                  <span className="text-[11px] text-rose-500">×{crawlRejected} 즉시 거부 + FCM 재시도 안내</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <button
+            onClick={onOverload}
+            className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors ${
+              overload ? 'bg-rose-500 text-white' : 'border border-black/15 text-gray-600 hover:border-black'
+            }`}
+          >
+            <AlertTriangle className="h-3.5 w-3.5" />
+            {overload ? '폭주 해제' : `폭주 부하 (동시 ${BURST}건)`}
+          </button>
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-emerald-700/80">
-          크롤링 풀이 포화되거나 폭주해도, 검색은 별도 fixed:10 풀이라 영향을 받지 않고 계속 응답합니다.
-        </p>
+
+        {/* 검색 격리풀 — 항상 정상 */}
+        <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/40 p-4 sm:p-5">
+          <PoolHeader icon={<Search className="h-4 w-4" />} title="executorService (검색)" sub={`fixed ${SEARCH_POOL} · 완전 격리`} tone="good" />
+          <div className="mt-3 flex flex-wrap gap-2">
+            {Array.from({ length: SEARCH_COUNT }).map((_, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.05 }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-2.5 py-1.5 text-xs text-emerald-600"
+              >
+                <Check className="h-3.5 w-3.5" /> 응답 완료
+              </motion.div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-emerald-700/80">
+            카드 격리풀이 포화·폭주해도, 검색은 별도 fixed:10 풀이라 영향을 받지 않고 계속 응답합니다.
+          </p>
+        </div>
       </div>
     </motion.div>
   )
