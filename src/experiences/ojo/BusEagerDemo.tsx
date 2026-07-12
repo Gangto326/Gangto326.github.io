@@ -22,13 +22,13 @@ const BUS_NO = '360'
 
 // 영상 시간 = 타임라인 시간 (1:1). 영상 속 제스처 3.1s.
 const GESTURE = 3.1
-const GAP = 0.2 // 제스처 인식 → 처리 시작까지의 지연(현실성). 제스처 선에서 살짝 띄운다.
-const PROC_START = GESTURE + GAP // 3.3 — 제스처 이후 처리(재생/탐지) 시작
+const GAP = 0.2 // 제스처 인식 → 처리 시작 지연(현실성). 제스처 선에서 살짝 띄운다.
+const PROC_START = GESTURE + GAP // 3.3
 const ANNOUNCE_LAG = 0.1 // 재생 시작 → 음성이 실제로 들리기까지
-const SCALE = 4.5 // 타임라인 오른쪽 끝
-const BUS_DEPART = 4.5 // Lazy에서만 표시
-const ROW = 34
-const clampX = (s: number) => Math.max(0, Math.min(100, (s / SCALE) * 100))
+const BUS_DEPART = 6.5 // Lazy에서만 표시(버스가 출발하는 시점)
+// 타임라인 스케일: Eager는 짧게, Lazy는 긴 파이프라인(≈11s)이 다 보이도록 넓게
+const SCALE_E = 4.5
+const SCALE_L = 11.5
 
 // Eager: 제스처(3.1s) 이전 선제 처리 완료 → 대기 → 즉시 재생. GPS·캐싱·교차검증은 Eager 전용.
 const EAGER: Lane[] = [
@@ -43,13 +43,15 @@ const EAGER: Lane[] = [
 ]
 
 // Lazy(기존): GPS·캐싱·교차검증 없음. 제스처 이후 YOLO→OCR→TTS 생성→재생을 순차 실행.
-// Eager의 재생 시작과 같은 GAP만큼 띄워 탐지를 시작한다. Eager와 달리 TTS를 그때서야 생성한다.
+// 실제 CV·TTS를 그때서야 수행하므로 사용자 체감 지연이 7초를 넘는다.
 const LAZY: Lane[] = [
-  { key: 'yolo', label: 'YOLO 버스 탐지', sub: '제스처 후 시작', start: PROC_START, end: 3.7, color: '#8b5cf6' },
-  { key: 'ocr', label: 'OCR 번호 인식', sub: `번호판 → "${BUS_NO}"`, start: 3.7, end: 4.3, color: '#f59e0b' },
-  { key: 'tts', label: 'TTS 음성 생성', sub: '안내 합성 (지연)', start: 4.3, end: 5.5, color: '#10b981' },
-  { key: 'play', label: '음성 안내 재생', sub: '생성 완료 후 재생', start: 5.5, end: 6.2, color: '#059669' },
+  { key: 'yolo', label: 'YOLO 버스 탐지', sub: '제스처 후 시작', start: PROC_START, end: 4.2, color: '#8b5cf6' },
+  { key: 'ocr', label: 'OCR 번호 인식', sub: `번호판 → "${BUS_NO}"`, start: 4.2, end: 6.4, color: '#f59e0b' },
+  { key: 'tts', label: 'TTS 음성 생성', sub: '안내 합성 (지연)', start: 6.4, end: 10.4, color: '#10b981' },
+  { key: 'play', label: '음성 안내 재생', sub: '생성 완료 후 재생', start: 10.4, end: 11.0, color: '#059669' },
 ]
+
+const ROW = 34
 
 export function BusEagerDemo() {
   const [mode, setMode] = useState<Mode>('lazy')
@@ -60,6 +62,9 @@ export function BusEagerDemo() {
   const [muted, setMuted] = useState(true)
   const videoRef = useRef<HTMLVideoElement>(null)
   const topRef = useRef<HTMLDivElement>(null)
+
+  const scale = mode === 'eager' ? SCALE_E : SCALE_L
+  const x = (s: number) => Math.max(0, Math.min(100, (s / scale) * 100))
 
   const lanes = mode === 'eager' ? EAGER : LAZY
   const ttsLane = lanes.find((l) => l.key === 'tts')!
@@ -72,13 +77,15 @@ export function BusEagerDemo() {
   const detected = t >= yoloEnd
   const delivered = t >= deliverAt
 
+  const scrollTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
   const togglePlay = () => {
     const v = videoRef.current
     if (!v) return
     if (v.paused) {
       if (v.currentTime >= v.duration - 0.05) v.currentTime = 0
       void v.play()
-      topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      scrollTop()
     } else {
       v.pause()
     }
@@ -106,15 +113,24 @@ export function BusEagerDemo() {
       setMuted(v.muted)
     }
   }
+  const selectMode = (m: Mode) => {
+    setMode(m)
+    setView('demo')
+    scrollTop()
+  }
+  const toggleView = () => {
+    setView((v) => (v === 'demo' ? 'diagram' : 'demo'))
+    scrollTop()
+  }
 
   return (
     <ExperienceShell
       title="버스 번호 인식 — Eager Evaluation"
       subtitle="실제 시연 영상을 재생하거나 스크럽하며, 각 처리가 어느 순간 트리거되어 준비되는지 확인해 보세요."
-      hint="영상과 타임라인은 1:1로 동기화됩니다(영상 속 제스처 3.1s = 아래 플로우의 제스처). Lazy는 '선제 처리가 없었다면'의 비교로, GPS·노선캐싱·교차검증 없이 제스처 이후 YOLO→OCR→TTS만 실행합니다. 처리 소요는 개념 이해를 위한 예시값입니다."
+      hint="영상과 타임라인은 1:1로 동기화됩니다(영상 속 제스처 3.1s = 아래 플로우의 제스처). Lazy는 '선제 처리가 없었다면'의 비교로, GPS·노선캐싱·교차검증 없이 제스처 이후 YOLO→OCR→TTS 생성→재생을 순차 실행합니다. 처리 소요는 개념 이해를 위한 예시값입니다."
       onReset={reset}
     >
-      {/* 모드 선택 + 뷰 전환(시퀀스 다이어그램) */}
+      {/* 모드 선택 + 뷰 전환 · 재생/버튼 클릭 시 이 지점이 상단으로 */}
       <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-wrap items-center gap-2">
         {(
           [
@@ -124,10 +140,7 @@ export function BusEagerDemo() {
         ).map((m) => (
           <button
             key={m.k}
-            onClick={() => {
-              setMode(m.k)
-              setView('demo')
-            }}
+            onClick={() => selectMode(m.k)}
             className={`rounded-full px-4 py-2 text-sm transition-colors ${
               mode === m.k && view === 'demo'
                 ? 'bg-black text-white'
@@ -138,7 +151,7 @@ export function BusEagerDemo() {
           </button>
         ))}
         <button
-          onClick={() => setView((v) => (v === 'demo' ? 'diagram' : 'demo'))}
+          onClick={toggleView}
           className={`ml-auto inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm transition-colors ${
             view === 'diagram'
               ? 'bg-black text-white'
@@ -151,7 +164,6 @@ export function BusEagerDemo() {
       </div>
 
       {view === 'diagram' ? (
-        /* 시퀀스 다이어그램 — 영상/플로우 자리를 같은 영역으로 대체 */
         <div className="rounded-2xl border border-black/10 bg-white p-3 sm:p-4">
           <img
             src={SEQ}
@@ -255,10 +267,10 @@ export function BusEagerDemo() {
 
               <div className="relative flex-1" style={{ height: lanes.length * ROW }}>
                 {lanes.map((l, i) => {
-                  const left = clampX(l.start)
-                  const right = clampX(l.end)
-                  const fillRight = clampX(Math.min(t, l.end))
-                  const ongoing = l.end > SCALE
+                  const left = x(l.start)
+                  const right = x(l.end)
+                  const fillRight = x(Math.min(t, l.end))
+                  const ongoing = l.end > scale
                   const done = t >= l.end && !ongoing
                   const active = t >= l.start && t < l.end
                   return (
@@ -285,25 +297,25 @@ export function BusEagerDemo() {
                 })}
 
                 {/* 제스처 마커 */}
-                <div className="absolute inset-y-0 z-20" style={{ left: `${clampX(GESTURE)}%` }}>
+                <div className="absolute inset-y-0 z-20" style={{ left: `${x(GESTURE)}%` }}>
                   <div className="h-full border-l-2 border-black" />
                   <span className="absolute -top-0.5 left-1 whitespace-nowrap rounded bg-black px-1.5 py-0.5 text-[10px] text-white">
                     ✊ 제스처
                   </span>
                 </div>
 
-                {/* 버스 출발 마커 — Lazy에서만 표시 */}
+                {/* 버스 출발 마커 — Lazy에서만 */}
                 {mode === 'lazy' && (
-                  <div className="absolute inset-y-0 right-0 z-20">
+                  <div className="absolute inset-y-0 z-20" style={{ left: `${x(BUS_DEPART)}%` }}>
                     <div className="h-full border-l-2 border-dashed border-rose-400" />
-                    <span className="absolute bottom-0 right-1 whitespace-nowrap rounded bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">
+                    <span className="absolute bottom-0 left-1 whitespace-nowrap rounded bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">
                       🚌 버스 출발
                     </span>
                   </div>
                 )}
 
                 {/* 재생 헤드 */}
-                <div className="absolute inset-y-0 z-30 w-px bg-black/70" style={{ left: `${clampX(t)}%` }}>
+                <div className="absolute inset-y-0 z-30 w-px bg-black/70" style={{ left: `${x(t)}%` }}>
                   <div className="absolute -top-1 -left-[3px] h-2 w-2 rounded-full bg-black" />
                 </div>
               </div>
@@ -323,10 +335,10 @@ export function BusEagerDemo() {
                 </p>
               </div>
               <div>
-                <span className="text-xs tracking-widest text-gray-400">안내까지 대기</span>
+                <span className="text-xs tracking-widest text-gray-400">안내까지 대기(체감)</span>
                 <p className={`text-lg font-light tabular-nums ${caught ? 'text-emerald-600' : 'text-rose-500'}`}>
                   {(deliverAt - GESTURE).toFixed(1)}s
-                  <span className="ml-2 text-xs font-normal text-gray-400">제스처 → 안내</span>
+                  <span className="ml-2 text-xs font-normal text-gray-400">제스처 → 안내 청취</span>
                 </p>
               </div>
             </div>
@@ -345,7 +357,7 @@ export function BusEagerDemo() {
               ) : delivered && caught ? (
                 <p className="text-emerald-600">🔊 {BUS_NO}번 버스입니다 — 제스처 즉시 음성 안내, 탑승 성공</p>
               ) : mode === 'lazy' && t >= BUS_DEPART ? (
-                <p className="text-rose-500">🚌 버스 출발 — TTS 음성이 아직 생성 중이라 안내를 놓쳤습니다</p>
+                <p className="text-rose-500">🚌 버스 출발 — 아직 처리 중이라 안내가 도착하지 못했습니다</p>
               ) : (
                 <p className="flex items-center gap-2 text-gray-500">
                   <Loader2 className="h-4 w-4 animate-spin" /> 제스처 이후 처리 중…
