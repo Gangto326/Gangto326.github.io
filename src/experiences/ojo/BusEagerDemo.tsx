@@ -24,7 +24,7 @@ const BUS_NO = '360'
 const GESTURE = 3.1
 const GAP = 0.2 // 제스처 인식 → 처리 시작까지의 지연(현실성). 제스처 선에서 살짝 띄운다.
 const PROC_START = GESTURE + GAP // 3.3 — 제스처 이후 처리(재생/탐지) 시작
-const ANNOUNCE = 3.4 // 음성 안내가 들리기 시작(재생 조금 지난 시점)
+const ANNOUNCE_LAG = 0.1 // 재생 시작 → 음성이 실제로 들리기까지
 const SCALE = 4.5 // 타임라인 오른쪽 끝
 const BUS_DEPART = 4.5 // Lazy에서만 표시
 const ROW = 34
@@ -42,12 +42,13 @@ const EAGER: Lane[] = [
   { key: 'play', label: '음성 안내 재생', sub: '캐싱 파일 즉시 재생', start: PROC_START, end: 4.0, color: '#059669' },
 ]
 
-// Lazy(기존): GPS·캐싱·교차검증 없음. 제스처 이후 YOLO→OCR→TTS만 순차 실행.
-// Eager의 재생 시작과 같은 GAP만큼 띄워 탐지를 시작한다.
+// Lazy(기존): GPS·캐싱·교차검증 없음. 제스처 이후 YOLO→OCR→TTS 생성→재생을 순차 실행.
+// Eager의 재생 시작과 같은 GAP만큼 띄워 탐지를 시작한다. Eager와 달리 TTS를 그때서야 생성한다.
 const LAZY: Lane[] = [
   { key: 'yolo', label: 'YOLO 버스 탐지', sub: '제스처 후 시작', start: PROC_START, end: 3.7, color: '#8b5cf6' },
   { key: 'ocr', label: 'OCR 번호 인식', sub: `번호판 → "${BUS_NO}"`, start: 3.7, end: 4.3, color: '#f59e0b' },
   { key: 'tts', label: 'TTS 음성 생성', sub: '안내 합성 (지연)', start: 4.3, end: 5.5, color: '#10b981' },
+  { key: 'play', label: '음성 안내 재생', sub: '생성 완료 후 재생', start: 5.5, end: 6.2, color: '#059669' },
 ]
 
 export function BusEagerDemo() {
@@ -63,7 +64,8 @@ export function BusEagerDemo() {
   const lanes = mode === 'eager' ? EAGER : LAZY
   const ttsLane = lanes.find((l) => l.key === 'tts')!
   const ttsReadyAt = ttsLane.end
-  const deliverAt = mode === 'eager' ? ANNOUNCE : ttsReadyAt
+  const playLane = lanes.find((l) => l.key === 'play')!
+  const deliverAt = playLane.start + ANNOUNCE_LAG // 사용자가 음성 안내를 듣는 시점
   const caught = deliverAt <= BUS_DEPART
   const lead = GESTURE - ttsReadyAt
   const yoloEnd = lanes.find((l) => l.key === 'yolo')!.end
@@ -114,23 +116,27 @@ export function BusEagerDemo() {
     >
       {/* 모드 선택 + 뷰 전환(시퀀스 다이어그램) */}
       <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-wrap items-center gap-2">
-        {view === 'demo' &&
-          (
-            [
-              { k: 'lazy', label: 'Lazy 방식 (기존)' },
-              { k: 'eager', label: 'Eager 선제 처리' },
-            ] as { k: Mode; label: string }[]
-          ).map((m) => (
-            <button
-              key={m.k}
-              onClick={() => setMode(m.k)}
-              className={`rounded-full px-4 py-2 text-sm transition-colors ${
-                mode === m.k ? 'bg-black text-white' : 'border border-black/15 text-gray-600 hover:border-black'
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
+        {(
+          [
+            { k: 'lazy', label: 'Lazy 방식 (기존)' },
+            { k: 'eager', label: 'Eager 선제 처리' },
+          ] as { k: Mode; label: string }[]
+        ).map((m) => (
+          <button
+            key={m.k}
+            onClick={() => {
+              setMode(m.k)
+              setView('demo')
+            }}
+            className={`rounded-full px-4 py-2 text-sm transition-colors ${
+              mode === m.k && view === 'demo'
+                ? 'bg-black text-white'
+                : 'border border-black/15 text-gray-600 hover:border-black'
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
         <button
           onClick={() => setView((v) => (v === 'demo' ? 'diagram' : 'demo'))}
           className={`ml-auto inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm transition-colors ${
@@ -193,7 +199,7 @@ export function BusEagerDemo() {
                 ✊ 제스처
               </motion.span>
             )}
-            {mode === 'eager' && t >= ANNOUNCE && (
+            {mode === 'eager' && t >= deliverAt && (
               <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
