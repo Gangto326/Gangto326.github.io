@@ -11,6 +11,19 @@ import { experienceRegistry } from '@/experiences/registry'
 import { projects } from '@/data/projects'
 import { projectContent } from '@/data/projectContent'
 
+/** 본문 내 **강조** 마커를 굵은 글씨로 렌더링 */
+function emphasize(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') ? (
+      <strong key={i} className="font-semibold text-gray-900">
+        {part.slice(2, -2)}
+      </strong>
+    ) : (
+      part
+    ),
+  )
+}
+
 function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div>
@@ -196,7 +209,7 @@ export default function ProjectDetail() {
                     {col.k}
                   </span>
                   <p className="mt-4 text-sm leading-relaxed text-gray-700">
-                    {col.v}
+                    {emphasize(col.v)}
                   </p>
                 </div>
               ))}
@@ -227,7 +240,9 @@ export default function ProjectDetail() {
                 <h3 className="text-lg font-semibold tracking-tight">
                   {r.heading}
                 </h3>
-                <p className="mt-2 leading-relaxed text-gray-600">{r.body}</p>
+                <p className="mt-2 leading-relaxed text-gray-600">
+                  {emphasize(r.body)}
+                </p>
               </div>
             ))}
           </div>
