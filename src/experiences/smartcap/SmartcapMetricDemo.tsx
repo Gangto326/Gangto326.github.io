@@ -233,7 +233,7 @@ export function SmartcapMetricDemo() {
             </svg>
 
             <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
-              실제 3D 투영 · 실 CV 아님
+              3D 투영
             </span>
           </div>
         </div>
