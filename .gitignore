@@ -31,6 +31,9 @@ pnpm-debug.log*
 # 작업 자료 (개인정보 포함: 이력서 연락처·주소 → 공개 저장소 커밋 방지)
 docs/
 
+# 디자인 참고 템플릿 원본 (Next.js) — 포팅 소스라 앱에는 불포함
+digital-agency/
+
 # 세션/스크래치
 .session-manager/
 .claude/
