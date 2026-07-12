@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, ArrowUpRight, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react'
@@ -251,7 +251,15 @@ export default function ProjectDetail() {
         {/* 체험형 데모 (맨 아래) */}
         <section className="border-t border-black/10 py-14">
           {Demo ? (
-            <Demo />
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center rounded-3xl border border-black/10 bg-white py-24 text-center text-sm text-gray-400">
+                  체험 로딩 중…
+                </div>
+              }
+            >
+              <Demo />
+            </Suspense>
           ) : (
             <ExperienceShell
               title={project.experience}
