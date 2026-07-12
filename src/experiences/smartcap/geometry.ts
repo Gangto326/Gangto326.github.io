@@ -227,6 +227,14 @@ export const stairGz = (app: number) => lerp(STAIR.gzFar, STAIR.gzNear, app / 10
 const STAIR_HORIZON_Y = project(CAM_S, 0, 0, -1e6).y
 export const STAIR_REF_Y = STAIR_HORIZON_Y + 4 // 정확히 평평(rise=0)은 상행쪽으로 두는 여유
 
+// 위험(2단계) 임계 리매핑: 기본 투영에선 밑변이 화면 바닥(634)까지 내려와야 위험이라
+// 너무 가까워야 발동한다. 사용자 요청대로, 실제 투영 밑변 y가 550이 되는 시점을 위험
+// 임계(634)로 보도록 cy를 게인 스케일해 리포트한다. 오버레이 위험선도 이 실좌표에 맞춘다.
+export const STAIR_DANGER_CY = Math.round(IMG_H * 0.99) // 634 (리포트 임계)
+const STAIR_DANGER_TRIGGER_REAL = 550 // 실제 투영 밑변 y가 이 값이면 위험
+const S_CY_GAIN = STAIR_DANGER_CY / STAIR_DANGER_TRIGGER_REAL // ≈ 1.153
+export const STAIR_DANGER_LINE_Y = STAIR_DANGER_TRIGGER_REAL // 오버레이 위험선(실좌표)
+
 export interface StairMeas {
   cy: number
   vp: Pt
@@ -240,7 +248,7 @@ export function measureStairs(pitch: number, app: number): StairMeas {
   const rs = stairRise(pitch)
   const gz = stairGz(app)
   const cyPt = project(CAM_S, 0, STAIR.gy, gz) // 가장 가까운 계단코 중심
-  const cy = cyPt.y
+  const cy = cyPt.y * S_CY_GAIN // 위험 임계 리매핑(실 550 → 리포트 634)
   // 하행 방향(멀어지며 내려가는 축)의 소실점 = 그 방향 무한점의 상
   const dl = Math.hypot(rs, STAIR.depth)
   const d: [number, number, number] = [0, rs / dl, -STAIR.depth / dl]
