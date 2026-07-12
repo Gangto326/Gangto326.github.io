@@ -8,7 +8,7 @@ import {
   IMG_H,
   IMG_W,
   MAT,
-  MAT_BASE_D,
+  MAT_BASE_SHORT,
   materialZ,
   measureMaterial,
   measureStairs,
@@ -61,7 +61,7 @@ interface SState { s: Sev; score: number; firstCy: number }
 interface Machine { vehicle: VState; material: MState; stairs: SState }
 const INIT: Machine = {
   vehicle: { s: 'SAFE', vf: 0 },
-  material: { s: 'SAFE', firstAlert: MAT_BASE_D, cw: 0, cd: 0 },
+  material: { s: 'SAFE', firstAlert: MAT_BASE_SHORT, cw: 0, cd: 0 },
   stairs: { s: 'SAFE', score: 0, firstCy: 0 },
 }
 
@@ -101,7 +101,7 @@ export function SmartcapMetricDemo() {
   const mMeas = measureMaterial(mApp, mRot)
   const sMeas = measureStairs(sPitch, sApp)
   const vInc = (vMeas.h - VEH_BASE_H) / VEH_BASE_H
-  const mRatio = mMeas.dia / MAT_BASE_D
+  const mRatio = mMeas.short / MAT_BASE_SHORT
 
   // 120ms 프레임 틱 — 활성 객체 상태 머신 갱신
   useEffect(() => {
@@ -120,8 +120,8 @@ export function SmartcapMetricDemo() {
           return { ...prev, vehicle: { s, vf } }
         }
         if (k === 'material') {
-          const dia = measureMaterial(i.mApp, i.mRot).dia
-          const ratio = dia / MAT_BASE_D
+          const dia = measureMaterial(i.mApp, i.mRot).short
+          const ratio = dia / MAT_BASE_SHORT
           let { s, firstAlert, cw, cd } = prev.material
           if (s === 'SAFE') {
             cw = ratio >= M_FIRST ? cw + 1 : 0
@@ -286,12 +286,12 @@ export function SmartcapMetricDemo() {
             {active === 'material' && (
               <>
                 <SliderRow label="자재 접근" right={`≈ ${(-materialZ(mApp)).toFixed(1)}m`} value={mApp} onChange={setMApp} from="멀리" to="가까이" />
-                <SliderRow label="자재 회전" right={`${Math.round(mRot)}°`} value={mRot} min={0} max={90} onChange={setMRot} from="정면" to="기울임" />
+                <SliderRow label="자재 회전 (끝단이 나를 향해)" right={`${Math.round(mRot)}°`} value={mRot} min={0} max={MAT.yawMax} onChange={setMRot} from="정면" to="스윙" />
                 <MetricGrid
                   items={[
-                    { k: '짧은 변 · 판정값', v: `${Math.round(mMeas.dia)}px`, sub: '단면 지름 (회전 불변)' },
-                    { k: '긴 변', v: `${Math.round(mMeas.len)}px`, sub: '회전 영향 · 판정 제외' },
-                    { k: 'size / baseline', v: `×${mRatio.toFixed(2)}`, sub: `baseline ${Math.round(MAT_BASE_D)}px`, accent: mRatio >= M_SECOND ? 'DANGER' : mRatio >= M_FIRST ? 'WARNING' : undefined },
+                    { k: '짧은 변 · 판정값', v: `${Math.round(mMeas.short)}px`, sub: 'minAreaRect 단면 지름' },
+                    { k: '긴 변', v: `${Math.round(mMeas.long)}px`, sub: '파이프 길이 (투영)' },
+                    { k: 'short / baseline', v: `×${mRatio.toFixed(2)}`, sub: `baseline ${Math.round(MAT_BASE_SHORT)}px`, accent: mRatio >= M_SECOND ? 'DANGER' : mRatio >= M_FIRST ? 'WARNING' : undefined },
                   ]}
                 />
                 <FrameProgress sev={machine.material.s} cw={machine.material.cw} cd={machine.material.cd} need={M_FRAMES} />
@@ -302,9 +302,9 @@ export function SmartcapMetricDemo() {
                   ]}
                 />
                 <p className="text-xs leading-relaxed text-gray-500">
-                  원통은 기울어져 보여도 되므로 축(긴 변)이 아니라 <strong>짧은 변(단면 지름)</strong>을 크기로 씁니다.
-                  <strong>회전 슬라이더</strong>를 움직이면 3D 원통이 실제로 돌면서 긴 변만 짧아지고, 판정값인 짧은 변은 그대로임을 확인해 보세요.
-                  임계 초과가 <strong>3프레임 연속</strong>이어야 등급이 올라 순간 노이즈 오탐을 막습니다.
+                  판정값은 실루엣의 <strong>최소외접회전사각형(minAreaRect) 짧은 변</strong> = 가장 굵게 보이는 단면 지름입니다.
+                  <strong>회전 슬라이더</strong>로 파이프 끝단을 카메라 쪽으로 스윙하면, 축이 제자리에 있어도 가까워진 쪽 단면이 굵어져 짧은 변이 커집니다(접근 판정).
+                  AABB 대신 minAreaRect를 쓰는 건 파이프가 비스듬히 놓여도 지름을 정확히 재기 위함입니다. 임계 초과가 <strong>3프레임 연속</strong>이어야 등급이 올라 노이즈 오탐을 막습니다.
                 </p>
               </>
             )}
@@ -409,12 +409,16 @@ function VehicleModel({ app, color }: { app: number; color: string }) {
 }
 
 function MaterialModel({ app, rot, color }: { app: number; rot: number; color: string }) {
+  // 축 방향 = Rz(roll) · Ry(yaw) · X (geometry.cylinderPoints와 동일 합성).
+  // 중첩 group: 바깥 roll(Z, 시선축 · 드라마틱 기운 포즈), 안 yaw(Y, 끝단 스윙), 원통 mesh는 X정렬.
   return (
-    <group position={[0, 0, materialZ(app)]} rotation={[0, (rot * Math.PI) / 180, 0]}>
-      <mesh rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[MAT.R, MAT.R, MAT.L, 40]} />
-        <meshStandardMaterial color={color} roughness={0.5} metalness={0.15} />
-      </mesh>
+    <group position={[0, 0, materialZ(app)]} rotation={[0, 0, MAT.roll]}>
+      <group rotation={[0, (rot * Math.PI) / 180, 0]}>
+        <mesh rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[MAT.R, MAT.R, MAT.L, 40]} />
+          <meshStandardMaterial color={color} roughness={0.5} metalness={0.15} />
+        </mesh>
+      </group>
     </group>
   )
 }
@@ -469,21 +473,24 @@ function VehicleOverlay({ m, color }: { m: VehMeas; color: string }) {
 
 function MaterialOverlay({ m, color }: { m: MatMeas; color: string }) {
   const pts = m.rect.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-  const mx = (m.shortA.x + m.shortB.x) / 2
+  const [sa, sb] = m.shortEdge
+  const mx = clamp((sa.x + sb.x) / 2 + 12, 8, IMG_W - 60)
+  const my = clamp((sa.y + sb.y) / 2, 14, IMG_H - 18)
+  const [ba, bb] = M_BASE.shortEdge
   return (
     <>
-      {/* baseline 고스트 지름 */}
-      <line x1={M_BASE.shortA.x} y1={M_BASE.shortA.y} x2={M_BASE.shortB.x} y2={M_BASE.shortB.y} stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 4" />
+      {/* baseline 고스트(정지·원거리 짧은 변) */}
+      <line x1={ba.x} y1={ba.y} x2={bb.x} y2={bb.y} stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 4" />
       {/* minAreaRect */}
       <polygon points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeDasharray="7 5" />
       {/* 짧은 변(판정값) */}
-      <line x1={m.shortA.x} y1={m.shortA.y} x2={m.shortB.x} y2={m.shortB.y} stroke={color} strokeWidth="3" />
-      <circle cx={m.shortA.x} cy={m.shortA.y} r="3" fill={color} />
-      <circle cx={m.shortB.x} cy={m.shortB.y} r="3" fill={color} />
-      <text x={mx + 12} y={(m.shortA.y + m.shortB.y) / 2} fill={color} fontSize="13" fontWeight="600">
-        {Math.round(m.dia)}px
+      <line x1={sa.x} y1={sa.y} x2={sb.x} y2={sb.y} stroke={color} strokeWidth="4" />
+      <circle cx={sa.x} cy={sa.y} r="3" fill={color} />
+      <circle cx={sb.x} cy={sb.y} r="3" fill={color} />
+      <text x={mx} y={my} fill={color} fontSize="13" fontWeight="600">
+        {Math.round(m.short)}px
       </text>
-      <text x={mx + 12} y={(m.shortA.y + m.shortB.y) / 2 + 17} fill="#64748b" fontSize="11">
+      <text x={mx} y={my + 17} fill="#64748b" fontSize="11">
         짧은 변
       </text>
     </>

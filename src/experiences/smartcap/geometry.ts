@@ -83,40 +83,123 @@ export function measureVehicle(app: number): VehMeas {
 }
 export const VEH_BASE_H = measureVehicle(0).h
 
-// ── 원통 자재: 짧은 변(단면 지름) — 회전 불변 ────────────────────────────────
-export const MAT = { zf: -13, zn: -3.5, R: 0.5, L: 3 }
+// ── 원통 자재: minAreaRect 짧은 변(단면 지름) ────────────────────────────────
+// 실제 저장소 로직 = cv2.minAreaRect(mask)의 shorter_side = min(w,h). 이는 투영된
+// 실루엣 전체의 최소외접회전사각형 짧은 변으로, 파이프가 카메라 쪽으로 스윙하면
+// 가까워진 끝의 단면이 굵어져 값이 커진다("가장 굵게 보이는 단면 지름"). AABB 대신
+// minAreaRect를 쓰는 이유는 파이프가 화면에서 비스듬히(roll) 놓여도 지름을 정확히
+// 재기 위함. baseline(정지·원거리) 대비 비율로 접근을 판정한다.
+export const MAT = { zf: -11, zn: -4.2, R: 0.5, L: 4, roll: rad(18), yawMax: 60 }
 export const materialZ = (app: number) => lerp(MAT.zf, MAT.zn, app / 100)
 
-export interface MatMeas {
-  dia: number
-  len: number
-  rect: Pt[]
-  shortA: Pt
-  shortB: Pt
+// 볼록껍질(모노톤 체인)
+function convexHull(pts: Pt[]): Pt[] {
+  const p = pts.slice().sort((a, b) => a.x - b.x || a.y - b.y)
+  const n = p.length
+  if (n < 3) return p
+  const cross = (o: Pt, a: Pt, b: Pt) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+  const lo: Pt[] = []
+  for (const q of p) {
+    while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop()
+    lo.push(q)
+  }
+  const up: Pt[] = []
+  for (let i = n - 1; i >= 0; i--) {
+    const q = p[i]
+    while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop()
+    up.push(q)
+  }
+  lo.pop()
+  up.pop()
+  return lo.concat(up)
 }
-export function measureMaterial(app: number, rotDeg: number): MatMeas {
+
+// 최소외접회전사각형 (rotating calipers): 짧은 변·긴 변·4모서리
+function minAreaRect(pts: Pt[]): { short: number; long: number; rect: Pt[] } {
+  const h = convexHull(pts)
+  let best = { area: Infinity, short: 0, long: 0, rect: pts.slice(0, 4) }
+  for (let i = 0; i < h.length; i++) {
+    const p1 = h[i]
+    const p2 = h[(i + 1) % h.length]
+    const L = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1
+    const ux = (p2.x - p1.x) / L
+    const uy = (p2.y - p1.y) / L
+    const vx = -uy
+    const vy = ux
+    let u0 = Infinity
+    let u1 = -Infinity
+    let v0 = Infinity
+    let v1 = -Infinity
+    for (const p of h) {
+      const du = (p.x - p1.x) * ux + (p.y - p1.y) * uy
+      const dv = (p.x - p1.x) * vx + (p.y - p1.y) * vy
+      u0 = Math.min(u0, du)
+      u1 = Math.max(u1, du)
+      v0 = Math.min(v0, dv)
+      v1 = Math.max(v1, dv)
+    }
+    const w = u1 - u0
+    const ht = v1 - v0
+    const area = w * ht
+    if (area < best.area) {
+      const c = (u: number, v: number): Pt => ({ x: p1.x + u * ux + v * vx, y: p1.y + u * uy + v * vy })
+      best = {
+        area,
+        short: Math.min(w, ht),
+        long: Math.max(w, ht),
+        rect: [c(u0, v0), c(u1, v0), c(u1, v1), c(u0, v1)],
+      }
+    }
+  }
+  return best
+}
+
+// 원통 축(roll 고정 + yaw 회전 슬라이더)과 두 캡 원의 표본점을 투영
+function cylinderPoints(app: number, yawDeg: number): Pt[] {
   const zc = materialZ(app)
-  const th = rad(rotDeg)
-  // X축(수평)으로 누운 원통을 Y축 기준 회전 → 축 방향
-  const ax: [number, number, number] = [Math.cos(th), 0, -Math.sin(th)]
-  // 단면 지름: 축 중심의 위/아래 rim (Y축 회전으로 불변)
-  const shortA = project(CAM_M, 0, MAT.R, zc)
-  const shortB = project(CAM_M, 0, -MAT.R, zc)
-  const dia = Math.abs(shortB.y - shortA.y)
-  // 긴 변: 양쪽 캡 중심 (회전할수록 단축)
-  const cA = project(CAM_M, (ax[0] * MAT.L) / 2, 0, zc + (ax[2] * MAT.L) / 2)
-  const cB = project(CAM_M, (-ax[0] * MAT.L) / 2, 0, zc - (ax[2] * MAT.L) / 2)
-  const len = Math.hypot(cA.x - cB.x, cA.y - cB.y)
-  // minAreaRect 4모서리(캡중심 ± 반지름)
-  const rect: Pt[] = [
-    project(CAM_M, (ax[0] * MAT.L) / 2, MAT.R, zc + (ax[2] * MAT.L) / 2),
-    project(CAM_M, (ax[0] * MAT.L) / 2, -MAT.R, zc + (ax[2] * MAT.L) / 2),
-    project(CAM_M, (-ax[0] * MAT.L) / 2, -MAT.R, zc - (ax[2] * MAT.L) / 2),
-    project(CAM_M, (-ax[0] * MAT.L) / 2, MAT.R, zc - (ax[2] * MAT.L) / 2),
-  ]
-  return { dia, len, rect, shortA, shortB }
+  const th = rad(yawDeg)
+  const ph = MAT.roll
+  // X축 원통을 yaw(Y축)→roll(Z=시선축) 회전한 축 방향
+  const ax: [number, number, number] = [Math.cos(th) * Math.cos(ph), Math.cos(th) * Math.sin(ph), -Math.sin(th)]
+  // 축에 수직인 정규직교 기저 U, V
+  const a: [number, number, number] = Math.abs(ax[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]
+  const uRaw: [number, number, number] = [a[1] * ax[2] - a[2] * ax[1], a[2] * ax[0] - a[0] * ax[2], a[0] * ax[1] - a[1] * ax[0]]
+  const ul = Math.hypot(uRaw[0], uRaw[1], uRaw[2]) || 1
+  const U: [number, number, number] = [uRaw[0] / ul, uRaw[1] / ul, uRaw[2] / ul]
+  const V: [number, number, number] = [ax[1] * U[2] - ax[2] * U[1], ax[2] * U[0] - ax[0] * U[2], ax[0] * U[1] - ax[1] * U[0]]
+  const N = 28
+  const pts: Pt[] = []
+  for (const s of [-1, 1]) {
+    const cc: [number, number, number] = [(ax[0] * s * MAT.L) / 2, (ax[1] * s * MAT.L) / 2, zc + (ax[2] * s * MAT.L) / 2]
+    for (let k = 0; k < N; k++) {
+      const t = (2 * Math.PI * k) / N
+      pts.push(
+        project(
+          CAM_M,
+          cc[0] + MAT.R * (Math.cos(t) * U[0] + Math.sin(t) * V[0]),
+          cc[1] + MAT.R * (Math.cos(t) * U[1] + Math.sin(t) * V[1]),
+          cc[2] + MAT.R * (Math.cos(t) * U[2] + Math.sin(t) * V[2]),
+        ),
+      )
+    }
+  }
+  return pts
 }
-export const MAT_BASE_D = measureMaterial(0, 0).dia
+
+export interface MatMeas {
+  short: number // 판정값 = minAreaRect 짧은 변(가장 굵게 보이는 단면 지름)
+  long: number
+  rect: Pt[]
+  shortEdge: [Pt, Pt] // 짧은 변 캘리퍼용
+}
+export function measureMaterial(app: number, yawDeg: number): MatMeas {
+  const { short, long, rect } = minAreaRect(cylinderPoints(app, yawDeg))
+  const e01 = Math.hypot(rect[1].x - rect[0].x, rect[1].y - rect[0].y)
+  const e12 = Math.hypot(rect[2].x - rect[1].x, rect[2].y - rect[1].y)
+  const shortEdge: [Pt, Pt] = e01 <= e12 ? [rect[0], rect[1]] : [rect[1], rect[2]]
+  return { short, long, rect, shortEdge }
+}
+export const MAT_BASE_SHORT = measureMaterial(0, 0).short
 
 // ── 하행 계단: 소실점 Y ──────────────────────────────────────────────────────
 export const STAIR = {
