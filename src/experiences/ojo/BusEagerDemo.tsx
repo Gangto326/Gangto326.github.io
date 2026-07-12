@@ -22,6 +22,8 @@ const BUS_NO = '360'
 
 // 영상 시간 = 타임라인 시간 (1:1). 영상 속 제스처 3.1s.
 const GESTURE = 3.1
+const GAP = 0.2 // 제스처 인식 → 처리 시작까지의 지연(현실성). 제스처 선에서 살짝 띄운다.
+const PROC_START = GESTURE + GAP // 3.3 — 제스처 이후 처리(재생/탐지) 시작
 const ANNOUNCE = 3.4 // 음성 안내가 들리기 시작(재생 조금 지난 시점)
 const SCALE = 4.5 // 타임라인 오른쪽 끝
 const BUS_DEPART = 4.5 // Lazy에서만 표시
@@ -37,14 +39,15 @@ const EAGER: Lane[] = [
   { key: 'verify', label: '노선 교차검증', sub: 'Redis SISMEMBER', start: 1.9, end: 2.1, color: '#14b8a6', extra: true },
   { key: 'tts', label: 'TTS 음성 준비', sub: '미리 생성 · 저장', start: 2.1, end: 2.4, color: '#10b981' },
   { key: 'wait', label: '안내 대기', sub: '준비 완료 · 제스처 대기', start: 2.4, end: GESTURE, color: '#cbd5e1' },
-  { key: 'play', label: '음성 안내 재생', sub: '캐싱 파일 즉시 재생', start: GESTURE, end: 4.0, color: '#059669' },
+  { key: 'play', label: '음성 안내 재생', sub: '캐싱 파일 즉시 재생', start: PROC_START, end: 4.0, color: '#059669' },
 ]
 
 // Lazy(기존): GPS·캐싱·교차검증 없음. 제스처 이후 YOLO→OCR→TTS만 순차 실행.
+// Eager의 재생 시작과 같은 GAP만큼 띄워 탐지를 시작한다.
 const LAZY: Lane[] = [
-  { key: 'yolo', label: 'YOLO 버스 탐지', sub: '제스처 후 시작', start: GESTURE, end: 3.5, color: '#8b5cf6' },
-  { key: 'ocr', label: 'OCR 번호 인식', sub: `번호판 → "${BUS_NO}"`, start: 3.5, end: 4.1, color: '#f59e0b' },
-  { key: 'tts', label: 'TTS 음성 생성', sub: '안내 합성 (지연)', start: 4.1, end: 5.3, color: '#10b981' },
+  { key: 'yolo', label: 'YOLO 버스 탐지', sub: '제스처 후 시작', start: PROC_START, end: 3.7, color: '#8b5cf6' },
+  { key: 'ocr', label: 'OCR 번호 인식', sub: `번호판 → "${BUS_NO}"`, start: 3.7, end: 4.3, color: '#f59e0b' },
+  { key: 'tts', label: 'TTS 음성 생성', sub: '안내 합성 (지연)', start: 4.3, end: 5.5, color: '#10b981' },
 ]
 
 export function BusEagerDemo() {
@@ -137,7 +140,7 @@ export function BusEagerDemo() {
           }`}
         >
           <Network className="h-4 w-4" />
-          {view === 'diagram' ? '데모로 돌아가기' : '시퀀스 다이어그램'}
+          시퀀스 다이어그램
         </button>
       </div>
 
