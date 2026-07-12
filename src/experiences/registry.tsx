@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import { BusEagerDemo } from '@/experiences/ojo/BusEagerDemo'
+import { LidarH3Demo } from '@/experiences/lidar/LidarH3Demo'
 
 /**
  * projectId → 체험형 데모 컴포넌트 매핑.
@@ -8,7 +9,7 @@ import { BusEagerDemo } from '@/experiences/ojo/BusEagerDemo'
  */
 export const experienceRegistry: Record<string, ComponentType> = {
   ojo: BusEagerDemo,
-  // lidar: LidarH3Demo,          ← 커밋 7
+  lidar: LidarH3Demo,
   // smartcap: SmartcapMetricDemo,← 커밋 8
   // moda: BulkheadDemo,          ← 커밋 9
 }
