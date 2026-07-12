@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { OjoPipelineDemo } from '@/experiences/ojo/OjoPipelineDemo'
+import { BusEagerDemo } from '@/experiences/ojo/BusEagerDemo'
 
 /**
  * projectId → 체험형 데모 컴포넌트 매핑.
@@ -7,7 +7,7 @@ import { OjoPipelineDemo } from '@/experiences/ojo/OjoPipelineDemo'
  * "준비 중" placeholder로 대체된다.
  */
 export const experienceRegistry: Record<string, ComponentType> = {
-  ojo: OjoPipelineDemo,
+  ojo: BusEagerDemo,
   // lidar: LidarH3Demo,          ← 커밋 7
   // smartcap: SmartcapMetricDemo,← 커밋 8
   // moda: BulkheadDemo,          ← 커밋 9
