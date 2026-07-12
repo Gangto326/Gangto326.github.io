@@ -152,11 +152,11 @@ export function BusEagerDemo() {
 
       {view === 'diagram' ? (
         /* 시퀀스 다이어그램 — 영상/플로우 자리를 같은 영역으로 대체 */
-        <div className="max-h-[560px] overflow-auto rounded-2xl border border-black/10 bg-white p-3 sm:p-4">
+        <div className="rounded-2xl border border-black/10 bg-white p-3 sm:p-4">
           <img
             src={SEQ}
             alt="버스 번호 인식 Pre-fetching 시퀀스 다이어그램"
-            className="w-full min-w-[560px]"
+            className="block h-auto w-full"
           />
         </div>
       ) : (
