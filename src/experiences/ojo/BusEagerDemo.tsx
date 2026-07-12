@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Check, ChevronDown, Loader2, Pause, Play, Volume2, VolumeX } from 'lucide-react'
+import { Check, ChevronDown, Loader2, Network, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
 
 type Mode = 'lazy' | 'eager'
@@ -12,57 +12,58 @@ interface Lane {
   start: number
   end: number
   color: string
-  extra?: boolean // Eager를 위해 추가로 지불한 처리
+  extra?: boolean
 }
 
 const VID = `${import.meta.env.BASE_URL}assets/ojo/bus-demo.mp4`
 const SEQ = `${import.meta.env.BASE_URL}assets/ojo/sequence.png`
 const BUS_NO = '360'
 
-// 시나리오(타임라인) 시간. 영상 t=0 은 OCR 번호 인식의 3/4 지점(2.2s)에 앵커된다.
-const VIDEO_OFFSET = 2.2 // 영상 시작 → 타임라인 2.2s (OCR 3/4)
-const GESTURE = 5.2 // 영상 3.0s
-const WATCH = 6.2 // 영상 4.0s
-const SCALE = 6.8 // = 버스 출발, 타임라인 오른쪽 끝
+// 영상 시간 = 타임라인 시간 (1:1). 영상 속 제스처는 3.1s.
+const GESTURE = 3.1
+const WATCH = 4.0 // 워치 알림
+const SCALE = 4.5 // = 버스 출발, 타임라인 오른쪽 끝
 const BUS_DEPART = SCALE
 const ROW = 34
 const clampX = (s: number) => Math.max(0, Math.min(100, (s / SCALE) * 100))
 
-// Eager: 이벤트 트리거로 제스처 이전에 미리 처리. GPS·캐싱·교차검증은 Eager 전용(추가 지불).
+// Eager: 제스처(3.1s) 이전에 선제 처리 완료 → 대기 → 즉시 재생.
+// GPS·캐싱·교차검증은 Eager 전용(추가 지불 리소스).
 const EAGER: Lane[] = [
-  { key: 'gps', label: 'GPS·정류장 확인', sub: '15초 체류 감지', start: 0.2, end: 0.5, color: '#6366f1', extra: true },
-  { key: 'cache', label: '노선 캐싱', sub: 'API → Redis Set', start: 0.5, end: 1.2, color: '#0ea5e9', extra: true },
-  { key: 'yolo', label: 'YOLO 버스 탐지', sub: '160° 광각 포착', start: 1.2, end: 1.6, color: '#8b5cf6' },
-  { key: 'ocr', label: 'OCR 번호 인식', sub: `번호판 → "${BUS_NO}"`, start: 1.6, end: 2.4, color: '#f59e0b' },
-  { key: 'verify', label: '노선 교차검증', sub: 'Redis SISMEMBER', start: 2.4, end: 2.6, color: '#14b8a6', extra: true },
-  { key: 'tts', label: 'TTS 음성 준비', sub: '미리 생성 · 저장', start: 2.6, end: 2.9, color: '#10b981' },
-  { key: 'wait', label: '안내 대기', sub: '준비 완료 · 제스처 대기', start: 2.9, end: GESTURE, color: '#cbd5e1' },
+  { key: 'gps', label: 'GPS·정류장 확인', sub: '15초 체류 감지', start: 0.1, end: 0.4, color: '#6366f1', extra: true },
+  { key: 'cache', label: '노선 캐싱', sub: 'API → Redis Set', start: 0.4, end: 0.9, color: '#0ea5e9', extra: true },
+  { key: 'yolo', label: 'YOLO 버스 탐지', sub: '160° 광각 포착', start: 0.9, end: 1.3, color: '#8b5cf6' },
+  { key: 'ocr', label: 'OCR 번호 인식', sub: `번호판 → "${BUS_NO}"`, start: 1.3, end: 1.9, color: '#f59e0b' },
+  { key: 'verify', label: '노선 교차검증', sub: 'Redis SISMEMBER', start: 1.9, end: 2.1, color: '#14b8a6', extra: true },
+  { key: 'tts', label: 'TTS 음성 준비', sub: '미리 생성 · 저장', start: 2.1, end: 2.4, color: '#10b981' },
+  { key: 'wait', label: '안내 대기', sub: '준비 완료 · 제스처 대기', start: 2.4, end: GESTURE, color: '#cbd5e1' },
   { key: 'play', label: '음성 안내 재생', sub: '캐싱 파일 즉시 재생', start: GESTURE, end: WATCH, color: '#059669' },
 ]
 
 // Lazy(기존): GPS·캐싱·교차검증 없음. 제스처 이후 YOLO→OCR→TTS만 순차 실행.
 const LAZY: Lane[] = [
-  { key: 'yolo', label: 'YOLO 버스 탐지', sub: '제스처 후 시작', start: GESTURE, end: 5.6, color: '#8b5cf6' },
-  { key: 'ocr', label: 'OCR 번호 인식', sub: `번호판 → "${BUS_NO}"`, start: 5.6, end: 6.3, color: '#f59e0b' },
-  { key: 'tts', label: 'TTS 음성 생성', sub: '안내 합성 (지연)', start: 6.3, end: 7.6, color: '#10b981' },
+  { key: 'yolo', label: 'YOLO 버스 탐지', sub: '제스처 후 시작', start: GESTURE, end: 3.5, color: '#8b5cf6' },
+  { key: 'ocr', label: 'OCR 번호 인식', sub: `번호판 → "${BUS_NO}"`, start: 3.5, end: 4.1, color: '#f59e0b' },
+  { key: 'tts', label: 'TTS 음성 생성', sub: '안내 합성 (지연)', start: 4.1, end: 5.3, color: '#10b981' },
 ]
 
 export function BusEagerDemo() {
   const [mode, setMode] = useState<Mode>('lazy')
-  const [t, setT] = useState(VIDEO_OFFSET) // 시나리오 시간
+  const [t, setT] = useState(0) // 영상/타임라인 시간 (1:1)
   const [playing, setPlaying] = useState(false)
   const [duration, setDuration] = useState(6.84)
   const [muted, setMuted] = useState(true)
   const [showSeq, setShowSeq] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const topRef = useRef<HTMLDivElement>(null)
+  const seqRef = useRef<HTMLDivElement>(null)
 
   const lanes = mode === 'eager' ? EAGER : LAZY
   const ttsLane = lanes.find((l) => l.key === 'tts')!
   const ttsReadyAt = ttsLane.end
   const deliverAt = mode === 'eager' ? WATCH : ttsReadyAt
   const caught = deliverAt <= BUS_DEPART
-  const lead = GESTURE - ttsReadyAt // 양수 = 제스처보다 일찍 준비
+  const lead = GESTURE - ttsReadyAt
   const yoloEnd = lanes.find((l) => l.key === 'yolo')!.end
   const detected = t >= yoloEnd
   const delivered = t >= deliverAt
@@ -73,19 +74,18 @@ export function BusEagerDemo() {
     if (v.paused) {
       if (v.currentTime >= v.duration - 0.05) v.currentTime = 0
       void v.play()
-      // 재생 시 모드 토글이 상단에 오도록 스크롤 → 영상+타임라인+결과가 한 눈에, 버튼도 접근 가능
       topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     } else {
       v.pause()
     }
   }
-  const scrub = (scenarioVal: number) => {
+  const scrub = (val: number) => {
     const v = videoRef.current
     if (v) {
       v.pause()
-      v.currentTime = Math.max(0, Math.min(scenarioVal - VIDEO_OFFSET, v.duration || duration))
+      v.currentTime = val
     }
-    setT(scenarioVal)
+    setT(val)
   }
   const reset = () => {
     const v = videoRef.current
@@ -93,7 +93,7 @@ export function BusEagerDemo() {
       v.pause()
       v.currentTime = 0
     }
-    setT(VIDEO_OFFSET)
+    setT(0)
   }
   const toggleMute = () => {
     const v = videoRef.current
@@ -102,16 +102,20 @@ export function BusEagerDemo() {
       setMuted(v.muted)
     }
   }
+  const openSeq = () => {
+    setShowSeq(true)
+    seqRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <ExperienceShell
       title="버스 번호 인식 — Eager Evaluation"
       subtitle="실제 시연 영상을 재생하거나 스크럽하며, 각 처리가 어느 순간 트리거되어 준비되는지 확인해 보세요."
-      hint="영상은 Eager 시스템의 실제 동작입니다. 영상 시작 시점은 이미 GPS·노선캐싱·버스탐지가 끝나고 OCR이 3/4 진행된 순간입니다. Lazy는 '선제 처리가 없었다면'의 비교로, GPS·노선캐싱·교차검증 없이 제스처 이후 YOLO→OCR→TTS만 실행합니다. 타임라인 오른쪽 끝은 버스 출발 시점이며, 처리 소요는 개념 이해를 위한 예시값입니다."
+      hint="영상과 타임라인은 1:1로 동기화됩니다(영상 속 제스처 3.1s = 아래 플로우의 제스처). Lazy는 '선제 처리가 없었다면'의 비교로, GPS·노선캐싱·교차검증 없이 제스처 이후 YOLO→OCR→TTS만 실행합니다. 타임라인 오른쪽 끝은 버스 출발 시점이며, 처리 소요는 개념 이해를 위한 예시값입니다."
       onReset={reset}
     >
-      {/* 모드 선택 — 기존(Lazy) 먼저 · 재생 시 이 지점이 상단으로 */}
-      <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-wrap gap-2">
+      {/* 모드 선택 + 시퀀스 다이어그램 버튼 · 재생 시 이 지점이 상단으로 */}
+      <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-wrap items-center gap-2">
         {(
           [
             { k: 'lazy', label: 'Lazy 방식 (기존)' },
@@ -128,9 +132,16 @@ export function BusEagerDemo() {
             {m.label}
           </button>
         ))}
+        <button
+          onClick={openSeq}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-black/15 px-4 py-2 text-sm text-gray-600 transition-colors hover:border-black hover:text-black"
+        >
+          <Network className="h-4 w-4" />
+          시퀀스 다이어그램
+        </button>
       </div>
 
-      {/* 카메라 뷰 — 실제 시연 영상 */}
+      {/* 카메라 뷰 — 실제 시연 영상 (하단 손 제스처 우선 크롭) */}
       <div className="relative overflow-hidden rounded-2xl bg-black">
         <video
           ref={videoRef}
@@ -138,9 +149,9 @@ export function BusEagerDemo() {
           muted={muted}
           playsInline
           preload="metadata"
-          className="h-[230px] w-full object-cover sm:h-[270px]"
+          className="h-[240px] w-full object-cover object-bottom sm:h-[300px]"
           onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 6.84)}
-          onTimeUpdate={(e) => setT(VIDEO_OFFSET + e.currentTarget.currentTime)}
+          onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
           onEnded={() => setPlaying(false)}
@@ -159,6 +170,15 @@ export function BusEagerDemo() {
             </motion.span>
           )}
         </div>
+        {t >= GESTURE && (
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur"
+          >
+            ✊ 제스처
+          </motion.span>
+        )}
         {delivered && caught && (
           <motion.span
             initial={{ opacity: 0 }}
@@ -188,10 +208,10 @@ export function BusEagerDemo() {
         </button>
         <input
           type="range"
-          min={VIDEO_OFFSET}
-          max={SCALE}
+          min={0}
+          max={duration}
           step={0.02}
-          value={Math.min(t, SCALE)}
+          value={t}
           onChange={(e) => scrub(Number(e.target.value))}
           className="flex-1 accent-black"
           aria-label="타임라인 스크럽"
@@ -313,7 +333,7 @@ export function BusEagerDemo() {
       </div>
 
       {/* 실제 시퀀스 다이어그램 */}
-      <div className="mt-4">
+      <div ref={seqRef} style={{ scrollMarginTop: 80 }} className="mt-4">
         <button
           onClick={() => setShowSeq((s) => !s)}
           className="inline-flex items-center gap-1.5 text-sm text-gray-600 transition-colors hover:text-black"
