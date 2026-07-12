@@ -13,7 +13,6 @@ import {
   measureMaterial,
   measureStairs,
   measureVehicle,
-  S_REF_OFFSET,
   STAIR,
   stairGz,
   stairRise,
@@ -318,13 +317,14 @@ export function SmartcapMetricDemo() {
                   items={[
                     { k: '방향 판정', v: sMeas.desc ? '하행' : '상행', sub: `소실점 ${sMeas.desc ? '>' : '≤'} 기준선`, accent: sMeas.desc ? 'WARNING' : undefined },
                     { k: '하행 점수', v: `${machine.stairs.score} / ${S_SCORE_WARN}`, sub: '+1/−1 누적' },
-                    { k: '밑변 y', v: `${Math.round(sMeas.cy)}`, sub: `위험 ≥ ${S_BOTTOM_DANGER}`, accent: sMeas.cy >= S_BOTTOM_DANGER ? 'DANGER' : undefined },
+                    { k: '밑변 y', v: `${Math.round(sMeas.cy)}`, sub: `위험 ≥ ${S_BOTTOM_DANGER}`, accent: sMeas.desc && sMeas.cy >= S_BOTTOM_DANGER ? 'DANGER' : undefined },
                   ]}
                 />
                 <ThresholdBar
                   rows={[
                     { label: 'WARNING', at: `하행점수 ≥ ${S_SCORE_WARN}`, hit: machine.stairs.score >= S_SCORE_WARN },
-                    { label: 'DANGER', at: `밑변 y ≥ ${S_BOTTOM_DANGER}`, hit: sMeas.cy >= S_BOTTOM_DANGER },
+                    // DANGER는 하행(WARNING) 상태가 전제 — 상행에선 밑변이 내려와도 위험이 아니다
+                    { label: 'DANGER', at: `하행 + 밑변 y ≥ ${S_BOTTOM_DANGER}`, hit: sMeas.desc && sMeas.cy >= S_BOTTOM_DANGER },
                   ]}
                 />
                 <p className="text-xs leading-relaxed text-gray-500">
@@ -373,28 +373,38 @@ export function SmartcapMetricDemo() {
 // ── 3D 모델 (내장 프리미티브) ────────────────────────────────────────────────
 function VehicleModel({ app, color }: { app: number; color: string }) {
   const wheelY = 0.32
+  const z = vehicleZ(app)
   return (
-    <group position={[0, 0, vehicleZ(app)]} rotation={[0, VEH.yaw, 0]}>
-      <mesh position={[0, 0.72, -0.1]} castShadow>
-        <boxGeometry args={[2, 0.55, 3.6]} />
-        <meshStandardMaterial color={color} roughness={0.55} metalness={0.05} />
+    <>
+      {/* 지면 — 원근 그리드로 "지면 위" 느낌 부여 */}
+      <gridHelper args={[90, 90, '#cbd5e1', '#e6ebf1']} position={[0, 0, -16]} />
+      {/* 접지 그림자 */}
+      <mesh position={[0, 0.02, z]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[2.4, 40]} />
+        <meshBasicMaterial color="#0f172a" transparent opacity={0.14} />
       </mesh>
-      <mesh position={[0, 1.18, -0.3]}>
-        <boxGeometry args={[1.6, 0.5, 1.9]} />
-        <meshStandardMaterial color={color} roughness={0.4} metalness={0.05} />
-      </mesh>
-      {[
-        [0.85, 1.3],
-        [-0.85, 1.3],
-        [0.85, -1.3],
-        [-0.85, -1.3],
-      ].map(([x, z], i) => (
-        <mesh key={i} position={[x, wheelY, z]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.32, 0.32, 0.28, 24]} />
-          <meshStandardMaterial color="#334155" roughness={0.7} />
+      <group position={[0, 0, z]} rotation={[0, VEH.yaw, 0]}>
+        <mesh position={[0, 0.72, -0.1]}>
+          <boxGeometry args={[2, 0.55, 3.6]} />
+          <meshStandardMaterial color={color} roughness={0.55} metalness={0.05} />
         </mesh>
-      ))}
-    </group>
+        <mesh position={[0, 1.18, -0.3]}>
+          <boxGeometry args={[1.6, 0.5, 1.9]} />
+          <meshStandardMaterial color={color} roughness={0.4} metalness={0.05} />
+        </mesh>
+        {[
+          [0.85, 1.3],
+          [-0.85, 1.3],
+          [0.85, -1.3],
+          [-0.85, -1.3],
+        ].map(([x, zz], i) => (
+          <mesh key={i} position={[x, wheelY, zz]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.32, 0.32, 0.28, 24]} />
+            <meshStandardMaterial color="#334155" roughness={0.7} />
+          </mesh>
+        ))}
+      </group>
+    </>
   )
 }
 

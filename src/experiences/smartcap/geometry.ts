@@ -37,8 +37,11 @@ function project(cam: THREE.PerspectiveCamera, x: number, y: number, z: number):
 }
 
 // r3f <Canvas> 카메라와 공유하는 파라미터(측정 카메라와 동일해야 함)
+// 차량 카메라는 차 지붕(y=1.5)보다 낮게(y=0.9) 두어, 접근 시 지붕이 위로 솟고 밑변이
+// 아래로 내려오는 "지면 위에서 커지며 다가오는" 원근을 만든다(카메라가 지붕보다 높으면
+// 지붕이 되레 내려가 아래쪽만 커지는 착시가 생김).
 export const CAM = {
-  vehicle: { fov: 38, position: [0, 1.4, 0] as [number, number, number], rotX: rad(-3) },
+  vehicle: { fov: 42, position: [0, 0.9, 0] as [number, number, number], rotX: rad(-2) },
   material: { fov: 40, position: [0, 0, 0] as [number, number, number], rotX: 0 },
   stairs: { fov: 44, position: [0, 2.4, 6] as [number, number, number], rotX: rad(-14) },
 }
@@ -47,7 +50,7 @@ const CAM_M = mkCam(CAM.material.fov, CAM.material.position, CAM.material.rotX)
 const CAM_S = mkCam(CAM.stairs.fov, CAM.stairs.position, CAM.stairs.rotX)
 
 // ── 차량: AABB 높이 (원근에 따라 커짐) ───────────────────────────────────────
-export const VEH = { yaw: rad(25), zf: -22, zn: -5, hw: 1.0, y0: 0, y1: 1.5, hl: 2.0 }
+export const VEH = { yaw: rad(22), zf: -26, zn: -6.5, hw: 1.0, y0: 0, y1: 1.5, hl: 2.0 }
 export const vehicleZ = (app: number) => lerp(VEH.zf, VEH.zn, app / 100)
 
 export interface VehMeas {
@@ -128,8 +131,18 @@ export const STAIR = {
 }
 export const stairRise = (pitch: number) => lerp(STAIR.riseUp, STAIR.riseDown, pitch / 100)
 export const stairGz = (app: number) => lerp(STAIR.gzFar, STAIR.gzNear, app / 100)
-// reference_y = 640/2 - (640 - cy) - 287·sin35° = cy - (320 + 164.6)
-export const S_REF_OFFSET = IMG_H / 2 + 287 * Math.sin(rad(35)) // ≈ 484.6
+
+/**
+ * 기준선 = 카메라의 참 지평선(수평 전방 = rise 0인 평면의 소실점) + 소량 여유(eps).
+ *
+ * 스펙의 문자열 공식 reference_y = cy − 484.6(= 320 + 287·sin35°)은 실제 카메라의
+ * 내부/외부 파라미터에 맞춰 지평선을 근사한 값이라, 데모의 합성 카메라에는 그대로 쓰면
+ * 어긋난다(약한 상행도 하행으로 오판). 데모에서는 기하학적으로 정확한 지평선을 기준선으로
+ * 써서 "소실점이 지평선보다 아래면 하행" 규칙(포트폴리오 원본)을 그대로 만족시킨다.
+ * → 하행 판정이 계단 실제 기울기(rise)와 정확히 일치: 상행(rise≥0)은 접근해도 항상 SAFE.
+ */
+const STAIR_HORIZON_Y = project(CAM_S, 0, 0, -1e6).y
+export const STAIR_REF_Y = STAIR_HORIZON_Y + 4 // 정확히 평평(rise=0)은 상행쪽으로 두는 여유
 
 export interface StairMeas {
   cy: number
@@ -149,7 +162,6 @@ export function measureStairs(pitch: number, app: number): StairMeas {
   const dl = Math.hypot(rs, STAIR.depth)
   const d: [number, number, number] = [0, rs / dl, -STAIR.depth / dl]
   const vp = project(CAM_S, d[0] * 5000, STAIR.gy + d[1] * 5000, gz + d[2] * 5000)
-  const refY = cy - S_REF_OFFSET
   const steps: { l: Pt; r: Pt }[] = []
   for (let i = 0; i < STAIR.N; i++) {
     const y = STAIR.gy + rs * i
@@ -159,8 +171,8 @@ export function measureStairs(pitch: number, app: number): StairMeas {
   return {
     cy,
     vp,
-    refY,
-    desc: refY < vp.y,
+    refY: STAIR_REF_Y,
+    desc: vp.y > STAIR_REF_Y, // 소실점이 지평선 아래(y 큼) → 하행
     nearL: project(CAM_S, -STAIR.halfW, STAIR.gy, gz),
     nearR: project(CAM_S, STAIR.halfW, STAIR.gy, gz),
     steps,
