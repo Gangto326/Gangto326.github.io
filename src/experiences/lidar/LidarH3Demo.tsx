@@ -12,6 +12,10 @@ const POINTS = (lidarData.points as [number, number, number][]).map(([x, y, pm])
 // 해상도 → 화면 육각 반지름(px)
 const RES_SIZE: Record<number, number> = { 9: 40, 10: 24, 11: 15 }
 
+// 실제 보간 지도 / H3 히트맵 (부채꼴 정렬용, 배경 투명 크롭)
+const INTERP = `${import.meta.env.BASE_URL}assets/lidar/pm-interp.png`
+const H3MAP = `${import.meta.env.BASE_URL}assets/lidar/pm-h3.png`
+
 // PM 농도 → 색 (Turbo 계열 근사). 실측 분포(p50≈63, p90≈233)에 맞춰 30~250 범위.
 const STOPS: [number, [number, number, number]][] = [
   [30, [59, 76, 192]],
@@ -71,6 +75,8 @@ function hexPath(cx: number, cy: number, size: number) {
 export function LidarH3Demo() {
   const [agg, setAgg] = useState(false) // false=원천, true=H3 집계
   const [res, setRes] = useState(10)
+  const [view, setView] = useState<'interactive' | 'maps'>('interactive')
+  const [fade, setFade] = useState(0) // 0=보간, 1=H3
   const size = RES_SIZE[res]
 
   const cells = useMemo(() => {
@@ -96,6 +102,8 @@ export function LidarH3Demo() {
   const reset = () => {
     setAgg(false)
     setRes(10)
+    setView('interactive')
+    setFade(0)
   }
 
   return (
@@ -105,6 +113,70 @@ export function LidarH3Demo() {
       hint="화면은 실제 15분 측정 데이터(100,517행)를 다운샘플해 투영한 것으로, 색은 실측 PM10 농도(파랑=저 · 빨강=고)입니다. 아래 '실측' 셀 수·압축률은 전체 데이터를 실제 H3로 집계한 결과입니다."
       onReset={reset}
     >
+      {/* 뷰 선택 */}
+      <div className="mb-5 flex flex-wrap gap-2">
+        {(
+          [
+            { k: 'interactive', label: '인터랙티브' },
+            { k: 'maps', label: '실제 미세먼지 지도' },
+          ] as { k: 'interactive' | 'maps'; label: string }[]
+        ).map((v) => (
+          <button
+            key={v.k}
+            onClick={() => setView(v.k)}
+            className={`rounded-full px-4 py-2 text-sm transition-colors ${
+              view === v.k ? 'bg-black text-white' : 'border border-black/15 text-gray-600 hover:border-black'
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'maps' ? (
+        <div>
+          {/* 보간 ↔ H3 crossfade (두 부채꼴 정렬) */}
+          <div
+            className="relative w-full overflow-hidden rounded-2xl bg-[#0b0d12]"
+            style={{ aspectRatio: '2.19' }}
+          >
+            <img
+              src={INTERP}
+              alt="보간 미세먼지 지도"
+              className="absolute inset-0 h-full w-full object-fill"
+              style={{ opacity: 1 - fade }}
+            />
+            <img
+              src={H3MAP}
+              alt="H3 미세먼지 히트맵"
+              className="absolute inset-0 h-full w-full object-fill"
+              style={{ opacity: fade }}
+            />
+            <span className="absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
+              {fade < 0.5 ? '보간 지도' : 'H3 히트맵'}
+            </span>
+          </div>
+          <div className="mt-4 flex items-center gap-3 text-sm text-gray-500">
+            <span className="shrink-0">보간</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={fade}
+              onChange={(e) => setFade(Number(e.target.value))}
+              className="flex-1 accent-black"
+              aria-label="보간 ↔ H3 crossfade"
+            />
+            <span className="shrink-0">H3</span>
+          </div>
+          <p className="mt-3 text-sm leading-relaxed text-gray-600">
+            실제 라이다 스캔으로 만든 보간 미세먼지 지도와, 이를 H3 육각 셀로 집계한 히트맵입니다.
+            슬라이더로 두 부채꼴을 겹쳐 비교해 보세요 — 매끄러운 보간 농도가 육각 셀 단위로 이산화되는 과정을 볼 수 있습니다.
+          </p>
+        </div>
+      ) : (
+        <>
       {/* 컨트롤 */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {(
@@ -190,6 +262,8 @@ export function LidarH3Demo() {
           ? `측정점을 Level ${res} 육각 셀로 묶어 셀당 평균·최대·샘플 수만 저장합니다. 해상도를 낮출수록(9로) 셀이 커지고 개수가 줄어 압축률이 높아집니다.`
           : '15분마다 유입되는 약 10만 행의 실제 원천 측정점입니다. 이대로 저장하면 데드튜플·VACUUM 부하가 커집니다. "H3 셀 집계"를 눌러보세요.'}
       </p>
+        </>
+      )}
     </ExperienceShell>
   )
 }
