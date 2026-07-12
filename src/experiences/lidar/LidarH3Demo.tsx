@@ -135,28 +135,8 @@ export function LidarH3Demo() {
 
       {view === 'maps' ? (
         <div>
-          {/* 보간 ↔ H3 crossfade (두 부채꼴 정렬) */}
-          <div
-            className="relative w-full overflow-hidden rounded-2xl bg-[#0b0d12]"
-            style={{ aspectRatio: '2.19' }}
-          >
-            <img
-              src={INTERP}
-              alt="보간 미세먼지 지도"
-              className="absolute inset-0 h-full w-full object-fill"
-              style={{ opacity: 1 - fade }}
-            />
-            <img
-              src={H3MAP}
-              alt="H3 미세먼지 히트맵"
-              className="absolute inset-0 h-full w-full object-fill"
-              style={{ opacity: fade }}
-            />
-            <span className="absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
-              {fade < 0.5 ? '보간 지도 · 사용자 표시용' : 'H3 집계 · 실제 저장 데이터'}
-            </span>
-          </div>
-          <div className="mt-4 flex items-center gap-3 text-sm text-gray-500">
+          {/* 슬라이더 위로 (인터랙티브와 동일 위치) */}
+          <div className="mb-4 flex items-center gap-3 text-sm text-gray-500">
             <span className="shrink-0">보간 (표시용)</span>
             <input
               type="range"
@@ -169,6 +149,27 @@ export function LidarH3Demo() {
               aria-label="보간 ↔ H3 crossfade"
             />
             <span className="shrink-0">H3 (저장)</span>
+          </div>
+          {/* crossfade — 인터랙티브와 동일한 크기(aspect 460/300) */}
+          <div
+            className="relative w-full overflow-hidden rounded-2xl bg-[#0b0d12]"
+            style={{ aspectRatio: '460 / 300' }}
+          >
+            <img
+              src={INTERP}
+              alt="보간 미세먼지 지도"
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{ opacity: 1 - fade }}
+            />
+            <img
+              src={H3MAP}
+              alt="H3 미세먼지 히트맵"
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{ opacity: fade }}
+            />
+            <span className="absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
+              {fade < 0.5 ? '보간 지도 · 사용자 표시용' : 'H3 집계 · 실제 저장 데이터'}
+            </span>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-gray-600">
             <strong className="font-semibold text-gray-900">보간 지도</strong>는 사용자에게 보여주는 미세먼지 지도이고,{' '}
@@ -195,7 +196,7 @@ export function LidarH3Demo() {
           />
           <span className="shrink-0 text-gray-500">H3 집계</span>
         </div>
-        <div className={`flex items-center gap-2 text-sm transition-opacity ${slide < 0.05 ? 'opacity-40' : ''}`}>
+        <div className="flex items-center gap-2 text-sm">
           <span className="text-gray-500">해상도</span>
           <input
             type="range"
@@ -203,7 +204,6 @@ export function LidarH3Demo() {
             max={11}
             step={1}
             value={res}
-            disabled={slide < 0.05}
             onChange={(e) => setRes(Number(e.target.value))}
             className="w-24 accent-black"
             aria-label="H3 해상도"
