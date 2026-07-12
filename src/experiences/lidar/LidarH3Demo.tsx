@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
 import lidarData from '@/data/lidarData.json'
 
-// 실제 당진 현대제철 라이다 15분 데이터(100,517행)를 다운샘플·투영한 값
+// 실제 라이다 15분 데이터(100,517행)를 다운샘플·투영한 값
 const W = 460
 const H = 300
 const RAW_ROWS = lidarData.rows
@@ -73,7 +73,7 @@ function hexPath(cx: number, cy: number, size: number) {
 }
 
 export function LidarH3Demo() {
-  const [agg, setAgg] = useState(false) // false=원천, true=H3 집계
+  const [slide, setSlide] = useState(0) // 0=원천 점, 1=H3 셀 집계
   const [res, setRes] = useState(10)
   const [view, setView] = useState<'interactive' | 'maps'>('interactive')
   const [fade, setFade] = useState(0) // 0=보간, 1=H3
@@ -100,7 +100,7 @@ export function LidarH3Demo() {
 
   const real = RES_DATA[String(res)]
   const reset = () => {
-    setAgg(false)
+    setSlide(0)
     setRes(10)
     setView('interactive')
     setFade(0)
@@ -109,8 +109,8 @@ export function LidarH3Demo() {
   return (
     <ExperienceShell
       title="H3 격자 압축 시각화"
-      subtitle="실제 당진 현대제철 라이다 데이터를 H3 육각 셀로 집계하면 저장량이 어떻게 줄어드는지, 해상도를 바꿔가며 확인해 보세요."
-      hint="화면은 실제 15분 측정 데이터(100,517행)를 다운샘플해 투영한 것으로, 색은 실측 PM10 농도(파랑=저 · 빨강=고)입니다. 아래 '실측' 셀 수·압축률은 전체 데이터를 실제 H3로 집계한 결과입니다."
+      subtitle="실제 라이다 데이터를 H3 육각 셀로 집계하면 저장량이 어떻게 줄어드는지, 해상도를 바꿔가며 확인해 보세요."
+      hint="화면은 실제 15분 측정 데이터(100,517행)를 다운샘플해 투영한 것으로, 색은 실측 PM10 농도(파랑=저 · 빨강=고)입니다. 아래 '실측' 셀 수·압축률은 전체 데이터를 실제 H3로 집계한 결과이며, H3 해상도는 고객사 구역 통계의 넓이에 맞춰 선정했습니다."
       onReset={reset}
     >
       {/* 뷰 선택 */}
@@ -153,11 +153,11 @@ export function LidarH3Demo() {
               style={{ opacity: fade }}
             />
             <span className="absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
-              {fade < 0.5 ? '보간 지도' : 'H3 히트맵'}
+              {fade < 0.5 ? '보간 지도 · 사용자 표시용' : 'H3 집계 · 실제 저장 데이터'}
             </span>
           </div>
           <div className="mt-4 flex items-center gap-3 text-sm text-gray-500">
-            <span className="shrink-0">보간</span>
+            <span className="shrink-0">보간 (표시용)</span>
             <input
               type="range"
               min={0}
@@ -168,34 +168,34 @@ export function LidarH3Demo() {
               className="flex-1 accent-black"
               aria-label="보간 ↔ H3 crossfade"
             />
-            <span className="shrink-0">H3</span>
+            <span className="shrink-0">H3 (저장)</span>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-gray-600">
-            실제 라이다 스캔으로 만든 보간 미세먼지 지도와, 이를 H3 육각 셀로 집계한 히트맵입니다.
-            슬라이더로 두 부채꼴을 겹쳐 비교해 보세요 — 매끄러운 보간 농도가 육각 셀 단위로 이산화되는 과정을 볼 수 있습니다.
+            <strong className="font-semibold text-gray-900">보간 지도</strong>는 사용자에게 보여주는 미세먼지 지도이고,{' '}
+            <strong className="font-semibold text-gray-900">H3 히트맵</strong>은 실제 DB에 저장되는 데이터입니다.
+            H3 해상도는 고객사 구역 통계의 넓이에 맞춰 선정했습니다. 슬라이더로 두 부채꼴을 겹쳐,
+            매끄러운 표시용 지도가 저장용 육각 셀로 이산화되는 과정을 비교해 보세요.
           </p>
         </div>
       ) : (
         <>
-      {/* 컨트롤 */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {(
-          [
-            { k: false, label: '원천 측정점' },
-            { k: true, label: 'H3 셀 집계' },
-          ] as { k: boolean; label: string }[]
-        ).map((m) => (
-          <button
-            key={String(m.k)}
-            onClick={() => setAgg(m.k)}
-            className={`rounded-full px-4 py-2 text-sm transition-colors ${
-              agg === m.k ? 'bg-black text-white' : 'border border-black/15 text-gray-600 hover:border-black'
-            }`}
-          >
-            {m.label}
-          </button>
-        ))}
-        <div className={`ml-auto flex items-center gap-2 text-sm ${agg ? '' : 'opacity-40'}`}>
+      {/* 컨트롤 — 원천 ↔ H3 집계 슬라이더 */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-1 items-center gap-3 text-sm">
+          <span className="shrink-0 text-gray-500">원천 점</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={slide}
+            onChange={(e) => setSlide(Number(e.target.value))}
+            className="flex-1 accent-black"
+            aria-label="원천 측정점 ↔ H3 셀 집계"
+          />
+          <span className="shrink-0 text-gray-500">H3 집계</span>
+        </div>
+        <div className={`flex items-center gap-2 text-sm transition-opacity ${slide < 0.05 ? 'opacity-40' : ''}`}>
           <span className="text-gray-500">해상도</span>
           <input
             type="range"
@@ -203,9 +203,9 @@ export function LidarH3Demo() {
             max={11}
             step={1}
             value={res}
-            disabled={!agg}
+            disabled={slide < 0.05}
             onChange={(e) => setRes(Number(e.target.value))}
-            className="w-28 accent-black"
+            className="w-24 accent-black"
             aria-label="H3 해상도"
           />
           <span className="w-16 tabular-nums text-gray-700">Level {res}</span>
@@ -216,15 +216,15 @@ export function LidarH3Demo() {
       <div className="overflow-hidden rounded-2xl border border-black/10 bg-[#0b0d12]">
         <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full">
           {POINTS.map((p, i) => (
-            <circle key={i} cx={p.x} cy={p.y} r={1.4} fill={pmColor(p.pm)} opacity={agg ? 0.1 : 0.85} />
+            <circle key={i} cx={p.x} cy={p.y} r={1.4} fill={pmColor(p.pm)} opacity={0.85 - slide * 0.72} />
           ))}
-          {agg &&
+          {slide > 0.02 &&
             cells.map((c, i) => (
               <polygon
                 key={i}
                 points={hexPath(c.x, c.y, size - 0.6)}
                 fill={pmColor(c.avg)}
-                fillOpacity={0.82}
+                fillOpacity={0.82 * slide}
                 stroke="#0b0d12"
                 strokeWidth={0.8}
               />
@@ -258,9 +258,9 @@ export function LidarH3Demo() {
       </div>
 
       <p className="mt-3 text-sm leading-relaxed text-gray-600">
-        {agg
-          ? `측정점을 Level ${res} 육각 셀로 묶어 셀당 평균·최대·샘플 수만 저장합니다. 해상도를 낮출수록(9로) 셀이 커지고 개수가 줄어 압축률이 높아집니다.`
-          : '15분마다 유입되는 약 10만 행의 실제 원천 측정점입니다. 이대로 저장하면 데드튜플·VACUUM 부하가 커집니다. "H3 셀 집계"를 눌러보세요.'}
+        {slide < 0.5
+          ? '15분마다 유입되는 약 10만 행의 실제 원천 측정점입니다. 이대로 저장하면 데드튜플·VACUUM 부하가 커집니다. 슬라이더를 오른쪽으로 밀어 H3 셀 집계를 확인하세요.'
+          : `측정점을 Level ${res} 육각 셀로 묶어 셀당 평균·최대·샘플 수만 저장합니다. H3 해상도는 고객사 구역 통계의 넓이에 맞춰 선정했습니다. 해상도를 낮출수록(9로) 셀이 커지고 개수가 줄어 압축률이 높아집니다.`}
       </p>
         </>
       )}

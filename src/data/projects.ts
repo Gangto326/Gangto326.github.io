@@ -38,7 +38,7 @@ export const projects: Project[] = [
     role: 'Backend · DB · Infra',
     meta: '2025–26 · 3개월 · 2인',
     stack: ['Spring Boot', 'FastAPI', 'PostGIS', 'H3', 'pg_partman', 'Next.js'],
-    highlight: '공간 데이터 97% 압축 · 실시간 미세먼지 히트맵',
+    highlight: '구역 통계 넓이 기준 H3 집계로 저장 약 98% 절감 · 실시간 히트맵',
     experience: 'H3 격자 압축 시각화',
     github: 'https://github.com/skybory/LIDAR-Hyundai',
     accent: 'from-sky-400 via-cyan-300 to-emerald-200',
