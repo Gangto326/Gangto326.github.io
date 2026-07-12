@@ -48,22 +48,38 @@ const V_WARN = 0.5
 const V_DANGER = 2.0
 const M_FIRST = 1.1
 const M_SECOND = 1.35
-const M_SECOND_REL = 1.25
-const M_FRAMES = 3
-const S_SCORE_WARN = 2
 const S_BOTTOM_DANGER = Math.round(IMG_H * 0.99) // 633
-const S_BOTTOM_DELTA = 50
+const N_FRAMES = 3 // 등급 변화 히스테리시스(연속 프레임, 양방향 공통)
 
-// 상태 머신
-interface VState { s: Sev; vf: number }
-interface MState { s: Sev; firstAlert: number; cw: number; cd: number }
-interface SState { s: Sev; score: number; firstCy: number }
-interface Machine { vehicle: VState; material: MState; stairs: SState }
+// ── 양방향 상태 머신 ─────────────────────────────────────────────────────────
+// 실제 시스템은 단방향(다음 단계로만 상승 + 미감지 시 리셋)이지만, 이 체험은 조작감을
+// 위해 등급이 현재 값에 따라 실시간으로 오르내리게 한다(양방향). 임계 밴드에서 결정된
+// "목표 등급"으로 한 단계씩 이동하되, N_FRAMES 연속 유지되어야 바뀌어 경계 떨림을 막는다.
+const ORDER: Record<Sev, number> = { SAFE: 0, WARNING: 1, DANGER: 2 }
+const LEVELS: Sev[] = ['SAFE', 'WARNING', 'DANGER']
+
+interface OState { s: Sev; pending: Sev; cnt: number }
+interface Machine { vehicle: OState; material: OState; stairs: OState }
 const INIT: Machine = {
-  vehicle: { s: 'SAFE', vf: 0 },
-  material: { s: 'SAFE', firstAlert: MAT_BASE_SHORT, cw: 0, cd: 0 },
-  stairs: { s: 'SAFE', score: 0, firstCy: 0 },
+  vehicle: { s: 'SAFE', pending: 'SAFE', cnt: 0 },
+  material: { s: 'SAFE', pending: 'SAFE', cnt: 0 },
+  stairs: { s: 'SAFE', pending: 'SAFE', cnt: 0 },
 }
+// 목표 등급으로 한 칸 이동(N_FRAMES 히스테리시스). pending = 다음 후보 등급.
+function stepLevel(o: OState, target: Sev): OState {
+  if (target === o.s) return { s: o.s, pending: o.s, cnt: 0 }
+  const dir = ORDER[target] > ORDER[o.s] ? 1 : -1
+  const next = LEVELS[ORDER[o.s] + dir]
+  if (next === o.pending) {
+    const cnt = o.cnt + 1
+    if (cnt >= N_FRAMES) return { s: next, pending: next, cnt: 0 }
+    return { ...o, cnt }
+  }
+  return { s: o.s, pending: next, cnt: 1 }
+}
+const vehTarget = (inc: number): Sev => (inc > V_DANGER ? 'DANGER' : inc > V_WARN ? 'WARNING' : 'SAFE')
+const matTarget = (ratio: number): Sev => (ratio >= M_SECOND ? 'DANGER' : ratio >= M_FIRST ? 'WARNING' : 'SAFE')
+const stairTarget = (desc: boolean, cy: number): Sev => (!desc ? 'SAFE' : cy >= S_BOTTOM_DANGER ? 'DANGER' : 'WARNING')
 
 // Risk Code(0~10): 유형 오프셋 + 심각도
 const CODE_OFFSET: Record<ObjKey, number> = { material: 0, stairs: 3, vehicle: 6 }
@@ -111,42 +127,14 @@ export function SmartcapMetricDemo() {
       setMachine((prev) => {
         if (k === 'vehicle') {
           const inc = (measureVehicle(i.vApp).h - VEH_BASE_H) / VEH_BASE_H
-          let { s, vf } = prev.vehicle
-          vf = Math.min(vf + 1, 10)
-          if (vf >= 2) {
-            if (s === 'SAFE' && inc > V_WARN) s = 'WARNING'
-            else if (s === 'WARNING' && inc > V_DANGER) s = 'DANGER'
-          }
-          return { ...prev, vehicle: { s, vf } }
+          return { ...prev, vehicle: stepLevel(prev.vehicle, vehTarget(inc)) }
         }
         if (k === 'material') {
-          const dia = measureMaterial(i.mApp, i.mRot).short
-          const ratio = dia / MAT_BASE_SHORT
-          let { s, firstAlert, cw, cd } = prev.material
-          if (s === 'SAFE') {
-            cw = ratio >= M_FIRST ? cw + 1 : 0
-            if (cw >= M_FRAMES) {
-              s = 'WARNING'
-              firstAlert = dia
-              cw = 0
-            }
-          } else if (s === 'WARNING') {
-            const cond = dia / firstAlert >= M_SECOND_REL || ratio >= M_SECOND
-            cd = cond ? cd + 1 : 0
-            if (cd >= M_FRAMES) s = 'DANGER'
-          }
-          return { ...prev, material: { s, firstAlert, cw, cd } }
+          const ratio = measureMaterial(i.mApp, i.mRot).short / MAT_BASE_SHORT
+          return { ...prev, material: stepLevel(prev.material, matTarget(ratio)) }
         }
         const st = measureStairs(i.sPitch, i.sApp)
-        let { s, score, firstCy } = prev.stairs
-        score = clamp(score + (st.desc ? 1 : -1), 0, 4)
-        if (s === 'SAFE' && score >= S_SCORE_WARN) {
-          s = 'WARNING'
-          firstCy = st.cy
-        } else if (s === 'WARNING') {
-          if (st.cy >= S_BOTTOM_DANGER || st.cy >= firstCy + S_BOTTOM_DELTA) s = 'DANGER'
-        }
-        return { ...prev, stairs: { s, score, firstCy } }
+        return { ...prev, stairs: stepLevel(prev.stairs, stairTarget(st.desc, st.cy)) }
       })
     }, 120)
     return () => clearInterval(id)
@@ -174,7 +162,7 @@ export function SmartcapMetricDemo() {
     <ExperienceShell
       title="객체별 3종 메트릭 시뮬레이터"
       subtitle="차량·원통 자재·하행 계단을 3D로 조작해, 카메라가 본 값이 실제 판별식으로 SAFE→WARNING→DANGER를 어떻게 넘는지 확인해 보세요."
-      hint="화면은 three.js 실제 3D 장면입니다 — 슬라이더로 움직인 객체를 카메라로 투영해 나온 2D 값(박스 높이·단면 지름·소실점 y)에 실제 저장소의 판별식·임계값(차량 +50%/+200%, 자재 단면 ×1.1/×1.35 3프레임, 계단 소실점 기준선·밑변 y≥633)을 그대로 적용합니다. 세 판별식 모두 단방향 상태 머신이라 한 번 오른 등급은 리셋 전까지 유지됩니다(실제로는 객체가 일정 시간 사라지면 SAFE로 리셋). 외부 에셋·네트워크 없이 정적으로 동작합니다."
+      hint="화면은 three.js 실제 3D 장면입니다 — 슬라이더로 움직인 객체를 카메라로 투영해 나온 2D 값(박스 높이·단면 지름·소실점 y)에 실제 저장소의 판별식·임계값(차량 +50%/+200%, 자재 단면 ×1.1/×1.35, 계단 소실점 기준선·밑변 y≥633)을 그대로 적용합니다. 조작감을 위해 이 체험의 등급은 현재 값에 따라 실시간으로 오르내리는 양방향으로 동작합니다(실제 시스템은 다음 단계로만 오르는 단방향 + 미감지 시 리셋). 외부 에셋·네트워크 없이 정적으로 동작합니다."
       onReset={reset}
     >
       {/* 객체 탭 */}
@@ -270,6 +258,7 @@ export function SmartcapMetricDemo() {
                     { k: '높이 증가율', v: `+${Math.round(vInc * 100)}%`, sub: '(h−h₀)/h₀', accent: vInc > V_DANGER ? 'DANGER' : vInc > V_WARN ? 'WARNING' : undefined },
                   ]}
                 />
+                <FrameProgress o={machine.vehicle} />
                 <ThresholdBar
                   rows={[
                     { label: 'WARNING', at: '+50%', hit: vInc > V_WARN },
@@ -294,7 +283,7 @@ export function SmartcapMetricDemo() {
                     { k: 'short / baseline', v: `×${mRatio.toFixed(2)}`, sub: `baseline ${Math.round(MAT_BASE_SHORT)}px`, accent: mRatio >= M_SECOND ? 'DANGER' : mRatio >= M_FIRST ? 'WARNING' : undefined },
                   ]}
                 />
-                <FrameProgress sev={machine.material.s} cw={machine.material.cw} cd={machine.material.cd} need={M_FRAMES} />
+                <FrameProgress o={machine.material} />
                 <ThresholdBar
                   rows={[
                     { label: 'WARNING', at: '×1.10 · 3프레임', hit: mRatio >= M_FIRST },
@@ -316,24 +305,31 @@ export function SmartcapMetricDemo() {
                 <MetricGrid
                   items={[
                     { k: '방향 판정', v: sMeas.desc ? '하행' : '상행', sub: `소실점 ${sMeas.desc ? '>' : '≤'} 기준선`, accent: sMeas.desc ? 'WARNING' : undefined },
-                    { k: '하행 점수', v: `${machine.stairs.score} / ${S_SCORE_WARN}`, sub: '+1/−1 누적' },
                     { k: '밑변 y', v: `${Math.round(sMeas.cy)}`, sub: `위험 ≥ ${S_BOTTOM_DANGER}`, accent: sMeas.desc && sMeas.cy >= S_BOTTOM_DANGER ? 'DANGER' : undefined },
                   ]}
                 />
+                <FrameProgress o={machine.stairs} />
                 <ThresholdBar
                   rows={[
-                    { label: 'WARNING', at: `하행점수 ≥ ${S_SCORE_WARN}`, hit: machine.stairs.score >= S_SCORE_WARN },
-                    // DANGER는 하행(WARNING) 상태가 전제 — 상행에선 밑변이 내려와도 위험이 아니다
+                    { label: 'WARNING', at: '하행 감지 (소실점 > 기준선)', hit: sMeas.desc },
+                    // DANGER는 하행 상태가 전제 — 상행에선 밑변이 내려와도 위험이 아니다
                     { label: 'DANGER', at: `하행 + 밑변 y ≥ ${S_BOTTOM_DANGER}`, hit: sMeas.desc && sMeas.cy >= S_BOTTOM_DANGER },
                   ]}
                 />
                 <p className="text-xs leading-relaxed text-gray-500">
-                  계단 빗변을 연장한 <strong>소실점</strong>이 기준선보다 아래면 하행으로 보고 점수를 +1 합니다(위면 −1).
-                  시선 슬라이더로 계단을 상행↔하행으로 기울여 소실점이 기준선을 넘는 순간을 보세요. 점수가 <strong>2</strong> 이상이면
-                  하행 확정·경고, 밑변이 화면 바닥(<strong>y≥{S_BOTTOM_DANGER}</strong>)까지 내려오거나 1차 경고 대비 +50px 더 내려오면 위험. 상행은 항상 안전.
+                  계단 빗변을 연장한 <strong>소실점</strong>이 기준선(지평선)보다 아래면 하행, 위면 상행입니다.
+                  시선 슬라이더로 계단을 상행↔하행으로 기울여 소실점이 기준선을 넘는 순간을 보세요. 하행이면 경고,
+                  하행 상태에서 밑변이 화면 바닥(<strong>y≥{S_BOTTOM_DANGER}</strong>)까지 내려오면 위험. <strong>상행은 항상 안전</strong>입니다.
                 </p>
               </>
             )}
+
+            {/* 양방향 안내 (별도 명시) */}
+            <p className="rounded-xl border border-amber-200/70 bg-amber-50/60 px-3 py-2.5 text-xs leading-relaxed text-amber-700">
+              <strong>이 체험은 양방향입니다.</strong> 슬라이더를 되돌려 값이 작아지면 위험 등급도 실시간으로{' '}
+              <strong>다시 내려갑니다</strong>(경계 떨림 방지를 위해 {N_FRAMES}프레임 유지 후 한 단계씩 이동).
+              실제 시스템은 <strong>단방향</strong>이라 등급이 다음 단계로 오르기만 하고, 객체가 일정 시간 사라져야 SAFE로 리셋됩니다.
+            </p>
           </div>
         </div>
       </div>
@@ -582,20 +578,21 @@ function ThresholdBar({ rows }: { rows: { label: string; at: string; hit: boolea
   )
 }
 
-function FrameProgress({ sev, cw, cd, need }: { sev: Sev; cw: number; cd: number; need: number }) {
-  const isWarnPhase = sev === 'SAFE'
-  const val = isWarnPhase ? cw : cd
-  const target = isWarnPhase ? 'WARNING' : 'DANGER'
-  const done = sev === 'DANGER'
+// 양방향 등급 변화 히스테리시스 진행 표시(오름 ▲ / 내림 ▼)
+function FrameProgress({ o }: { o: OState }) {
+  const changing = o.pending !== o.s
+  const up = ORDER[o.pending] > ORDER[o.s]
+  const label = SEV[o.pending].ko.split(' ')[0] // 안전 / 주의 / 위험
+  const barColor = up ? SEV[o.pending].c : '#94a3b8'
   return (
     <div className="flex items-center gap-2 text-xs text-gray-500">
-      <span className="text-gray-400">연속 프레임</span>
+      <span className="text-gray-400">등급 변화</span>
       <div className="flex gap-1">
-        {Array.from({ length: need }).map((_, i) => (
-          <span key={i} className="h-2 w-6 rounded-full" style={{ background: !done && i < val ? SEV.WARNING.c : '#e5e7eb' }} />
+        {Array.from({ length: N_FRAMES }).map((_, i) => (
+          <span key={i} className="h-2 w-6 rounded-full" style={{ background: changing && i < o.cnt ? barColor : '#e5e7eb' }} />
         ))}
       </div>
-      <span className="tabular-nums text-gray-400">{done ? '—' : `${val}/${need} → ${target}`}</span>
+      <span className="tabular-nums text-gray-400">{changing ? `${o.cnt}/${N_FRAMES} ${up ? '▲' : '▼'} ${label}` : '안정'}</span>
     </div>
   )
 }
