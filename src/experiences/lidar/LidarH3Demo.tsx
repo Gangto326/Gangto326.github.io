@@ -1,27 +1,24 @@
 import { useMemo, useState } from 'react'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
+import lidarData from '@/data/lidarData.json'
 
-// 화면 좌표계
+// 실제 당진 현대제철 라이다 15분 데이터(100,517행)를 다운샘플·투영한 값
 const W = 460
 const H = 300
+const RAW_ROWS = lidarData.rows
+const RES_DATA = lidarData.res as Record<string, { cells: number; pct: number }>
+const POINTS = (lidarData.points as [number, number, number][]).map(([x, y, pm]) => ({ x, y, pm }))
 
-// 실측(15분 데이터 1건 = 100,517행) — res별 집계 후 셀 수·압축률 (DEMO_SPEC)
-const RAW_ROWS = 100517
-const RES_DATA: Record<number, { cells: number; pct: number }> = {
-  9: { cells: 224, pct: 99.8 },
-  10: { cells: 1410, pct: 98.6 },
-  11: { cells: 9452, pct: 90.6 },
-}
-// 해상도 → 화면 육각 반지름(px). 작을수록 셀이 많아진다.
+// 해상도 → 화면 육각 반지름(px)
 const RES_SIZE: Record<number, number> = { 9: 40, 10: 24, 11: 15 }
 
-// PM 농도 → 색 (Turbo 계열 근사). 범위 30~600.
+// PM 농도 → 색 (Turbo 계열 근사). 실측 분포(p50≈63, p90≈233)에 맞춰 30~250 범위.
 const STOPS: [number, [number, number, number]][] = [
   [30, [59, 76, 192]],
-  [120, [14, 165, 233]],
-  [250, [16, 185, 129]],
-  [400, [234, 179, 8]],
-  [550, [239, 68, 68]],
+  [90, [14, 165, 233]],
+  [150, [16, 185, 129]],
+  [200, [234, 179, 8]],
+  [250, [239, 68, 68]],
 ]
 const rgb = (c: [number, number, number]) => `rgb(${c[0]},${c[1]},${c[2]})`
 function pmColor(v: number): string {
@@ -71,56 +68,14 @@ function hexPath(cx: number, cy: number, size: number) {
   return pts.join(' ')
 }
 
-interface Pt {
-  x: number
-  y: number
-  pm: number
-}
-
 export function LidarH3Demo() {
   const [agg, setAgg] = useState(false) // false=원천, true=H3 집계
   const [res, setRes] = useState(10)
-
-  // 센서는 직선 프로파일(스캔 경로)로 측정 → 몇 개 라인 위에 점 분포. 결정적 시드.
-  const points = useMemo<Pt[]>(() => {
-    const lines: [[number, number], [number, number]][] = [
-      [[30, 45], [432, 92]],
-      [[40, 120], [424, 150]],
-      [[28, 205], [430, 188]],
-      [[60, 268], [400, 244]],
-    ]
-    const hot = { x: 300, y: 130, r: 92 }
-    let seed = 987654321
-    const rnd = () => {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff
-      return seed / 0x7fffffff
-    }
-    const pts: Pt[] = []
-    for (const [[x1, y1], [x2, y2]] of lines) {
-      const dx = x2 - x1
-      const dy = y2 - y1
-      const len = Math.hypot(dx, dy)
-      const nx = -dy / len
-      const ny = dx / len
-      const n = 320
-      for (let i = 0; i < n; i++) {
-        const t = i / n
-        const j = (rnd() - 0.5) * 15
-        const x = x1 + dx * t + nx * j
-        const y = y1 + dy * t + ny * j
-        const d = Math.hypot(x - hot.x, y - hot.y)
-        const hv = Math.exp(-(d * d) / (2 * hot.r * hot.r)) * 500
-        const pm = Math.min(600, 42 + rnd() * 28 + hv)
-        pts.push({ x, y, pm })
-      }
-    }
-    return pts
-  }, [])
-
   const size = RES_SIZE[res]
+
   const cells = useMemo(() => {
     const map = new Map<string, { q: number; r: number; sum: number; cnt: number }>()
-    for (const p of points) {
+    for (const p of POINTS) {
       const { q, r } = pixelToHex(p.x, p.y, size)
       const key = `${q},${r}`
       let c = map.get(key)
@@ -135,9 +90,9 @@ export function LidarH3Demo() {
       const { x, y } = hexCenter(c.q, c.r, size)
       return { x, y, avg: c.sum / c.cnt }
     })
-  }, [points, size])
+  }, [size])
 
-  const real = RES_DATA[res]
+  const real = RES_DATA[String(res)]
   const reset = () => {
     setAgg(false)
     setRes(10)
@@ -146,8 +101,8 @@ export function LidarH3Demo() {
   return (
     <ExperienceShell
       title="H3 격자 압축 시각화"
-      subtitle="수많은 원천 측정점을 H3 육각 셀 단위로 집계하면 저장량이 어떻게 줄어드는지, 해상도를 바꿔가며 확인해 보세요."
-      hint="화면은 개념 설명용 예시(스캔 라인 위 측정점)이며, 색은 PM 농도(파랑=저농도 · 빨강=고농도)입니다. 아래 '실측' 수치는 15분 데이터 1건(100,517행)을 실제 H3로 집계한 결과입니다."
+      subtitle="실제 당진 현대제철 라이다 데이터를 H3 육각 셀로 집계하면 저장량이 어떻게 줄어드는지, 해상도를 바꿔가며 확인해 보세요."
+      hint="화면은 실제 15분 측정 데이터(100,517행)를 다운샘플해 투영한 것으로, 색은 실측 PM10 농도(파랑=저 · 빨강=고)입니다. 아래 '실측' 셀 수·압축률은 전체 데이터를 실제 H3로 집계한 결과입니다."
       onReset={reset}
     >
       {/* 컨트롤 */}
@@ -188,11 +143,9 @@ export function LidarH3Demo() {
       {/* 시각화 */}
       <div className="overflow-hidden rounded-2xl border border-black/10 bg-[#0b0d12]">
         <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full">
-          {/* 원천 점 (집계 뷰에선 흐리게) */}
-          {points.map((p, i) => (
-            <circle key={i} cx={p.x} cy={p.y} r={1.5} fill={pmColor(p.pm)} opacity={agg ? 0.12 : 0.85} />
+          {POINTS.map((p, i) => (
+            <circle key={i} cx={p.x} cy={p.y} r={1.4} fill={pmColor(p.pm)} opacity={agg ? 0.1 : 0.85} />
           ))}
-          {/* H3 셀 */}
           {agg &&
             cells.map((c, i) => (
               <polygon
@@ -235,7 +188,7 @@ export function LidarH3Demo() {
       <p className="mt-3 text-sm leading-relaxed text-gray-600">
         {agg
           ? `측정점을 Level ${res} 육각 셀로 묶어 셀당 평균·최대·샘플 수만 저장합니다. 해상도를 낮출수록(9로) 셀이 커지고 개수가 줄어 압축률이 높아집니다.`
-          : '15분마다 유입되는 약 20만 행의 원천 측정점입니다. 이대로 저장하면 데드튜플·VACUUM 부하가 커집니다. "H3 셀 집계"를 눌러보세요.'}
+          : '15분마다 유입되는 약 10만 행의 실제 원천 측정점입니다. 이대로 저장하면 데드튜플·VACUUM 부하가 커집니다. "H3 셀 집계"를 눌러보세요.'}
       </p>
     </ExperienceShell>
   )
