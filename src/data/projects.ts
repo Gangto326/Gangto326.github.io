@@ -26,7 +26,7 @@ export const projects: Project[] = [
     tagline: '시각장애인 보행 보조 스마트 안경',
     role: 'AI · Backend · 팀장',
     meta: '2025 · 6주 · 6인',
-    stack: ['FastAPI', 'PyTorch', 'YOLOv11', 'MiDaS', 'ONNX', 'WebSocket'],
+    stack: ['FastAPI', 'PyTorch', 'AI', 'ONNX', 'WebSocket'],
     highlight: '다중 AI 실시간 파이프라인 · 깊이 기반 미학습 장애물 감지',
     experience: 'AI 파이프라인 시뮬레이터',
     accent: 'from-violet-400 via-fuchsia-300 to-pink-200',
@@ -40,7 +40,7 @@ export const projects: Project[] = [
     tagline: '미세먼지 라이다 센서 관제 플랫폼',
     role: 'Backend · DB · Infra',
     meta: '2025–26 · 3개월 · 2인',
-    stack: ['Spring Boot', 'FastAPI', 'PostGIS', 'H3', 'pg_partman', 'Next.js'],
+    stack: ['Spring Boot', 'FastAPI', 'PostGIS', 'H3', 'pg_partman'],
     highlight: '구역 통계 넓이 기준 H3 집계로 저장 약 98% 절감 · 실시간 히트맵',
     experience: 'H3 격자 압축 시각화',
     github: 'https://github.com/skybory/LIDAR-Hyundai',
@@ -58,6 +58,7 @@ export const projects: Project[] = [
     highlight: '센서리스 낙상 감지 · Homography 1회로 3개 파이프라인',
     experience: '객체별 3종 메트릭 시뮬레이터',
     accent: 'from-amber-400 via-orange-300 to-yellow-200',
+    thumb: 'assets/smartcap/hero.jpg',
   },
   {
     id: 'moda',
@@ -71,5 +72,6 @@ export const projects: Project[] = [
     highlight: 'Bulkhead 격리로 동시처리 3→10건 · ES-PG 정합성 보장',
     experience: '쓰레드풀 Bulkhead 시뮬레이터',
     accent: 'from-rose-400 via-pink-300 to-orange-200',
+    thumb: 'assets/moda/hero.png',
   },
 ]

@@ -83,11 +83,11 @@ export function Projects() {
 
                 <p className="mt-5 text-sm leading-relaxed text-gray-600">{p.highlight}</p>
 
-                <div className="mt-6 flex flex-wrap gap-2">
+                <div className="mt-6 flex flex-nowrap gap-1.5 overflow-hidden">
                   {p.stack.map((s) => (
                     <span
                       key={s}
-                      className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs text-gray-600"
+                      className="shrink-0 whitespace-nowrap rounded-full border border-black/10 bg-white px-2.5 py-1 text-xs text-gray-600"
                     >
                       {s}
                     </span>

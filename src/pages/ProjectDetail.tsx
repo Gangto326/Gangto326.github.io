@@ -98,7 +98,16 @@ function FeatureMedia({ media, order }: { media?: FeatureMediaType; order: strin
   if (media.kind === 'sequence') {
     return <FeatureSequence srcs={media.srcs.map((s) => base + s)} interval={media.interval} ratio={media.ratio} order={order} />
   }
-  return <img src={base + media.src} alt="" className={`block w-full rounded-2xl border border-black/10 bg-slate-50 ${order}`} />
+  if (media.kind === 'montage') {
+    return (
+      <div className={`flex items-start gap-3 ${order}`}>
+        {media.srcs.map((s) => (
+          <img key={s} src={base + s} alt="" loading="lazy" className="min-w-0 flex-1 rounded-2xl border border-black/10 bg-slate-50" />
+        ))}
+      </div>
+    )
+  }
+  return <img src={base + media.src} alt="" loading="lazy" className={`block w-full rounded-2xl border border-black/10 bg-slate-50 ${order}`} />
 }
 
 export default function ProjectDetail() {

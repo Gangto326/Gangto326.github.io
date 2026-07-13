@@ -3,6 +3,7 @@ export type FeatureMedia =
   | { kind: 'image'; src: string }
   | { kind: 'video'; src: string }
   | { kind: 'sequence'; srcs: string[]; interval?: number; ratio?: string }
+  | { kind: 'montage'; srcs: string[] } // 여러 이미지를 옆으로 나란히
 
 export interface Feature {
   title: string
@@ -125,22 +126,17 @@ export const projectContent: Record<string, ProjectContent> = {
       {
         title: '구역별 통계 집계',
         desc: '센서 원천 데이터를 셀·구역 단위 통계로 가공해 제공합니다.',
+        media: { kind: 'image', src: 'assets/lidar/zone-stats.jpg' },
       },
       {
         title: '미세먼지 히트맵',
         desc: 'PM 농도를 위성 지도 위 히트맵으로 시각화합니다.',
+        media: { kind: 'image', src: 'assets/lidar/heatmap.jpg' },
       },
       {
         title: '임계값 초과 알림',
         desc: '설정 임계값을 넘은 구역의 작업자에게 알림을 발송합니다.',
-      },
-      {
-        title: '원천 데이터 영구 보관',
-        desc: 'raw CSV를 S3에 보관해 재처리·백필의 자유도를 확보합니다.',
-      },
-      {
-        title: '관리자 격자 편집 도구',
-        desc: '공장 경계와 격자를 GUI로 직접 편집합니다.',
+        media: { kind: 'image', src: 'assets/lidar/alert.jpg' },
       },
     ],
     troubleshooting: [
@@ -186,22 +182,22 @@ export const projectContent: Record<string, ProjectContent> = {
       {
         title: '위험 객체 접근 감지',
         desc: '차량·건설 자재·하행 계단 3종의 접근을 실시간 감지합니다.',
+        media: { kind: 'image', src: 'assets/smartcap/object-approach.jpg' },
       },
       {
         title: '센서리스 낙상 감지',
         desc: 'IMU 없이 영상만으로 급격한 머리 움직임을 판별합니다.',
+        media: { kind: 'sequence', ratio: '16 / 9', srcs: ['assets/smartcap/fall-1.jpg', 'assets/smartcap/fall-2.jpg'] },
       },
       {
         title: '자동 수평 보정',
         desc: '사용자 행동 패턴을 기반으로 스스로 영점을 조절합니다.',
+        media: { kind: 'sequence', ratio: '16 / 9', srcs: ['assets/smartcap/level-1.jpg', 'assets/smartcap/level-2.jpg'] },
       },
       {
         title: '실시간 모니터링 대시보드',
         desc: '사고 추세·유형별 현황·위험 순위를 실시간 표시합니다.',
-      },
-      {
-        title: '사고 영상 저장',
-        desc: '사고 시점 이전 프레임을 압축해 Redis에서 S3로 저장합니다.',
+        media: { kind: 'image', src: 'assets/smartcap/dashboard.jpg' },
       },
     ],
     troubleshooting: [
@@ -247,22 +243,17 @@ export const projectContent: Record<string, ProjectContent> = {
       {
         title: '간편 웹 스크랩',
         desc: '오버레이·제스처 방식으로 웹사이트를 손쉽게 저장합니다.',
+        media: { kind: 'montage', srcs: ['assets/moda/scrap-overlay.gif', 'assets/moda/scrap-gesture.gif'] },
       },
       {
         title: 'AI 요약 · 키워드',
         desc: '콘텐츠를 요약하고 키워드를 추출해 하이라이팅합니다.',
+        media: { kind: 'image', src: 'assets/moda/summary.jpg' },
       },
       {
         title: '자동 분류 · 검색',
         desc: 'AI 자동 분류와 Elasticsearch 기반 검색을 제공합니다.',
-      },
-      {
-        title: '유형별 카드 생성',
-        desc: '일반·유튜브·이미지 등 콘텐츠 유형별 파이프라인으로 카드를 만듭니다.',
-      },
-      {
-        title: 'FCM 푸시 알림',
-        desc: '카드 생성 결과를 실시간 푸시 알림으로 전달합니다.',
+        media: { kind: 'montage', srcs: ['assets/moda/search.jpg', 'assets/moda/classify.jpg'] },
       },
     ],
     troubleshooting: [
