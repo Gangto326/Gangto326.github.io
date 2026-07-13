@@ -72,6 +72,6 @@ export const projects: Project[] = [
     highlight: 'Bulkhead 격리로 동시처리 3→10건 · ES-PG 정합성 보장',
     experience: '쓰레드풀 Bulkhead 시뮬레이터',
     accent: 'from-rose-400 via-pink-300 to-orange-200',
-    thumb: 'assets/moda/hero.png',
+    thumb: 'assets/moda/hero.jpg',
   },
 ]
