@@ -1,32 +1,35 @@
 import { useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { AlertTriangle, ArrowRight, Bell, Check, Clock, Database, Globe, Loader2, Search, Server, Zap } from 'lucide-react'
+import { AlertTriangle, Bell, Check, Clock, Database, Globe, Loader2, Search, Server, Zap } from 'lucide-react'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
 
 /**
  * MODA — 쓰레드풀 고갈 Bulkhead 시뮬레이터.
  *
- * docs/project4의 "MODA API Request Handling" 다이어그램과 실제 소스(moda-api·moda-nlp) 기준.
- * OFF(개선 전): 블로킹 크롤링(Selenium)을 moda-api가 직접 실행 → ForkJoinPool.commonPool
- * (2vCPU→3슬롯) 고갈 → 검색까지 연쇄 정지. ON(개선 후): (1) 일반 URL 카드 크롤링을 WebClient
- * 논블로킹으로 FastAPI 서버에 위임(경량 httpx·BeautifulSoup·GraphQL, Selenium 완전 제거) →
- * moda-api 스레드 미점유, (2) 블로킹 작업은 Bulkhead 4개 격리 풀(이미지 처리·DB 저장·검색 쿼리·
- * 유튜브 폴링)로 분리, (3) 검색은 전용 fixed:10 풀. 이미지 처리 풀 큐 초과 시 즉시 503+FCM
- * (fail-fast). 수치는 실측값. 외부 의존성 없는 프론트 시뮬레이션.
+ * docs/project4 "MODA API Request Handling" 다이어그램과 실제 소스(moda-api·moda-nlp) 기준.
+ * 크롤링은 양쪽 모두 경량·논블로킹(WebClient → FastAPI)이라 스레드를 붙잡지 않는다. 유일한
+ * 변수는 "블로킹 작업의 스레드풀 격리 여부" 하나다.
+ *   OFF: 이미지 처리·DB 저장 등 블로킹 작업이 하나의 공유 풀(ForkJoinPool.commonPool, 2vCPU→
+ *        3슬롯)을 함께 써서 슬롯을 점유 → 검색·유튜브 등 다른 작업이 슬롯을 얻지 못해 병목.
+ *   ON:  작업마다 전용 격리 풀(이미지 처리·DB 저장·검색 쿼리·유튜브 폴링)로 분리 → 검색은
+ *        전용 fixed:10 풀에서 항상 정상. 이미지 처리 풀 큐 초과 시 즉시 503+FCM(fail-fast).
+ * 수치는 실측값. 외부 의존성 없는 프론트 시뮬레이션.
  */
 
 type Mode = 'off' | 'on'
 
 // 실측 상수
 const SHARED_SLOTS = 3 // commonPool = vCPU-1 (t3.medium 2vCPU)
-const IMG_MAX = 4 // 이미지 처리 풀 (imageExecutor) core2/max4
+const IMG_MAX = 4 // 이미지 처리 풀 (imageExecutor) max
 const IMG_QUEUE = 50 // 이미지 처리 풀 queue
-const SEARCH_POOL = 10 // 검색 쿼리 풀 (executorService) fixed 10
+const SEARCH_POOL = 10 // 검색 쿼리 풀 (executorService) fixed
 const SEARCH_COUNT = 3 // 동시에 들어오는 검색/메인 요청(고정, 시각화용)
-const BURST = 60 // "폭주" 시 동시 이미지 카드 (큐 초과 → 503)
+const BURST = 60 // "폭주" 시 동시 요청 (큐 초과 → 503)
 
-const AMBER = '#f59e0b'
-const EMERALD = '#10b981'
+const AMBER = '#f59e0b' // 이미지 처리
+const VIOLET = '#8b5cf6' // DB 저장
+const EMERALD = '#10b981' // 검색 쿼리
+const SKY = '#0ea5e9' // 유튜브 폴링
 const SLATE = '#94a3b8'
 
 interface Metric {
@@ -37,8 +40,8 @@ interface Metric {
 const METRICS: Metric[] = [
   { k: '동시 처리 한계', off: '3건', on: '10건 전부 성공' },
   { k: 'CPU 피크', off: '5.2%', on: '1.21% (−77%)' },
-  { k: '크롤링(SSR) 시간', off: '10~25초 (Selenium)', on: '0.17~0.57초 (경량)' },
-  { k: 'Selenium 사용', off: '100%', on: '0% (완전 제거)' },
+  { k: '전체 처리 시간', off: '14.7~18.6초', on: '11.3~12.3초' },
+  { k: 'JVM Heap 피크', off: '195 MB', on: '185 MB' },
   { k: '검색 응답', off: '연쇄 정지', on: '정상' },
 ]
 
@@ -50,11 +53,11 @@ export function BulkheadDemo() {
   const on = mode === 'on'
   const req = overload && on ? BURST : n
 
-  // OFF: 공유 commonPool(3슬롯)을 크롤링이 점유 → 남는 슬롯만 검색이 사용
-  const sharedCrawl = Math.min(req, SHARED_SLOTS)
-  const searchRunningOff = Math.max(0, SHARED_SLOTS - sharedCrawl)
-  const searchBlockedOff = SEARCH_COUNT - Math.min(SEARCH_COUNT, searchRunningOff)
-  const meltdown = !on && req >= SHARED_SLOTS
+  // OFF: 블로킹 작업(이미지·DB 저장)이 공유 3슬롯 점유 → 검색·유튜브가 슬롯을 얻지 못함
+  const blockRun = Math.min(n, SHARED_SLOTS)
+  const youtubeRunOff = n < 2
+  const searchRunOff = n < 3
+  const meltdown = !on && !searchRunOff
 
   // ON: 이미지 처리 풀(max4 + queue50) — 큐 초과분은 503
   const imgRunning = Math.min(req, IMG_MAX)
@@ -74,8 +77,8 @@ export function BulkheadDemo() {
   return (
     <ExperienceShell
       title="쓰레드풀 고갈 Bulkhead 시뮬레이터"
-      subtitle="URL·유튜브·이미지 카드 생성과 검색이 한 서버로 들어옵니다. Bulkhead를 켜고 꺼서, 블로킹 크롤링이 공유풀을 점유해 검색까지 멈추는 문제와 풀을 격리해 서로 보호하는 개선을 비교하세요."
-      hint="OFF는 블로킹 크롤링(Selenium)을 moda-api가 직접 실행해 ForkJoinPool.commonPool(2vCPU→3슬롯)에서 돌던 개선 전 상태로, 동시 3~4건이면 검색·메인페이지까지 연쇄 정지합니다. ON에서는 다이어그램대로 (1) 일반 URL 카드 크롤링을 WebClient 논블로킹으로 FastAPI 서버에 위임(경량 httpx·BeautifulSoup·GraphQL로 전환, Selenium 100%→0% 완전 제거)해 moda-api 스레드를 붙잡지 않고, (2) 블로킹 작업은 Bulkhead 격리 풀(이미지 처리·DB 저장·검색 쿼리·유튜브 폴링)로 분리하며, (3) 검색은 전용 fixed:10 풀로 돕니다. 이미지 처리 풀 큐가 차면 무한 대기 대신 즉시 503+FCM으로 실패(fail-fast). 수치는 실측값(동시 3→10건, CPU −77%)."
+      subtitle="이미지 처리·DB 저장·검색·유튜브 폴링이 한 서버에서 돕니다. Bulkhead를 켜고 꺼서, 블로킹 작업이 공유 풀을 점유해 검색까지 멈추는 문제와 풀을 격리해 서로 보호하는 개선을 비교하세요."
+      hint="크롤링은 양쪽 모두 경량·논블로킹(WebClient → FastAPI)이라 스레드를 붙잡지 않습니다. 차이는 '블로킹 작업의 스레드풀 격리' 하나뿐입니다. OFF는 이미지 처리·DB 저장 같은 블로킹 작업이 하나의 공유 풀(ForkJoinPool.commonPool, 2vCPU→3슬롯)을 함께 써서, 동시 3~4건이면 슬롯이 차 검색·메인페이지까지 연쇄 정지합니다. ON은 작업마다 전용 격리 풀(이미지 처리·DB 저장·검색 쿼리·유튜브 폴링)로 나눠, 검색은 전용 fixed:10 풀에서 항상 정상 응답하고, 이미지 처리 풀 큐가 차면 무한 대기 대신 즉시 503+FCM으로 실패(fail-fast)합니다. 수치는 실측값(동시 3→10건, CPU −77%, 전체 처리 시간 최대 34%↓)."
       onReset={reset}
     >
       {/* 모드 토글 + 슬라이더 */}
@@ -125,7 +128,7 @@ export function BulkheadDemo() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className={`mb-5 flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm ${
+          className={`mb-4 flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm ${
             meltdown ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-emerald-200 bg-emerald-50 text-emerald-600'
           }`}
         >
@@ -133,14 +136,14 @@ export function BulkheadDemo() {
             <>
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>
-                <strong>서버 먹통</strong> — 크롤링이 공유 commonPool 3슬롯을 모두 점유해 검색·메인페이지까지 연쇄 정지했습니다.
+                <strong>서버 먹통</strong> — 블로킹 작업이 공유 풀 3슬롯을 모두 점유해 검색·메인페이지까지 연쇄 정지했습니다.
               </span>
             </>
           ) : on ? (
             <>
               <Check className="h-4 w-4 shrink-0" />
               <span>
-                <strong>정상</strong> — 크롤링은 FastAPI에 논블로킹 위임, 블로킹 작업은 격리 풀, 검색은 fixed:10에서 독립 응답합니다
+                <strong>정상</strong> — 작업마다 전용 격리 풀이라 검색은 fixed:10에서 독립 응답합니다
                 {imgRejected > 0 ? `. 이미지 처리 풀 큐(50) 초과분 ${imgRejected}건은 즉시 503+FCM으로 실패(fail-fast).` : '.'}
               </span>
             </>
@@ -148,19 +151,26 @@ export function BulkheadDemo() {
             <>
               <Check className="h-4 w-4 shrink-0" />
               <span>
-                공유풀에 여유가 있어 아직은 검색이 응답합니다. 동시 요청을 <strong>3건</strong> 이상으로 올려 보세요.
+                공유 풀에 여유가 있어 아직은 검색이 응답합니다. 동시 요청을 <strong>3건</strong> 이상으로 올려 보세요.
               </span>
             </>
           )}
         </motion.div>
       </AnimatePresence>
 
-      {/* 시각화 */}
+      {/* 크롤링 경로 — 양쪽 모두 동일(경량·논블로킹). 병목과 무관한 상수 요소 */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-sky-200/60 bg-sky-50/40 px-3 py-2 text-xs text-sky-700">
+        <Globe className="h-3.5 w-3.5 shrink-0" />
+        <span>
+          <strong>크롤링</strong>은 WebClient 논블로킹으로 FastAPI에 위임(경량 httpx·BeautifulSoup·GraphQL) — 스레드를 붙잡지 않아 <strong>OFF·ON 동일</strong>. 아래 스레드풀만 달라집니다.
+        </span>
+      </div>
+
+      {/* 스레드풀 구조 (유일한 변수) */}
       <AnimatePresence mode="wait">
         {on ? (
           <OnView
             key="on-view"
-            req={req}
             imgRunning={imgRunning}
             imgQueued={imgQueued}
             imgRejected={imgRejected}
@@ -168,7 +178,7 @@ export function BulkheadDemo() {
             onOverload={() => setOverload((v) => !v)}
           />
         ) : (
-          <OffView key="off-view" crawl={sharedCrawl} searchRunning={searchRunningOff} searchBlocked={searchBlockedOff} queued={req - sharedCrawl} />
+          <OffView key="off-view" blockRun={blockRun} n={n} searchRun={searchRunOff} youtubeRun={youtubeRunOff} />
         )}
       </AnimatePresence>
 
@@ -191,50 +201,44 @@ export function BulkheadDemo() {
   )
 }
 
-// ── OFF: 공유 commonPool — 크롤링(Selenium)이 슬롯 점유 → 검색 연쇄 정지 ────────
-function OffView({ crawl, searchRunning, searchBlocked, queued }: { crawl: number; searchRunning: number; searchBlocked: number; queued: number }) {
-  const meltdown = searchBlocked > 0
+// ── OFF: 하나의 공유 풀을 모든 블로킹 작업이 공유 → 검색 정지 ──────────────────
+function OffView({ blockRun, n, searchRun, youtubeRun }: { blockRun: number; n: number; searchRun: boolean; youtubeRun: boolean }) {
+  const meltdown = !searchRun
+  // 3슬롯을 채우는 블로킹 작업(이미지 처리 / DB 저장 번갈아)
+  const slotFill = Array.from({ length: SHARED_SLOTS }).map((_, i) => {
+    if (i >= blockRun) return null
+    return i % 2 === 0 ? { label: '이미지', color: AMBER } : { label: 'DB 저장', color: VIOLET }
+  })
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="rounded-2xl border border-black/10 bg-white p-4 sm:p-5">
-      <PoolHeader icon={<Server className="h-4 w-4" />} title="ForkJoinPool.commonPool()" sub={`공유 · ${SHARED_SLOTS}슬롯 (vCPU−1) · 크롤링·검색이 함께 사용`} tone={meltdown ? 'danger' : 'neutral'} />
+      <PoolHeader icon={<Server className="h-4 w-4" />} title="공유 스레드풀 · ForkJoinPool.commonPool()" sub={`${SHARED_SLOTS}슬롯 (vCPU−1) · 모든 블로킹 작업이 함께 사용`} tone={meltdown ? 'danger' : 'neutral'} />
       <div className="mt-3 flex flex-wrap gap-2">
-        {Array.from({ length: SHARED_SLOTS }).map((_, i) => {
-          const byCrawl = i < crawl
-          const bySearch = !byCrawl && i < crawl + searchRunning
-          return <Slot key={i} label={byCrawl ? '크롤링' : bySearch ? '검색' : '유휴'} color={byCrawl ? AMBER : bySearch ? EMERALD : SLATE} filled={byCrawl || bySearch} long={byCrawl} />
-        })}
+        {slotFill.map((s, i) => (
+          <Slot key={i} label={s ? s.label : '유휴'} color={s ? s.color : SLATE} filled={!!s} long={!!s} />
+        ))}
       </div>
-
-      {queued > 0 && (
+      {n > SHARED_SLOTS && (
         <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-          <span className="text-gray-400">commonPool 대기</span>
+          <span className="text-gray-400">대기</span>
           <div className="flex flex-wrap gap-1">
-            {Array.from({ length: Math.min(queued, 9) }).map((_, i) => (
+            {Array.from({ length: Math.min(n - SHARED_SLOTS, 9) }).map((_, i) => (
               <Chip key={i} color={AMBER} muted />
             ))}
           </div>
-          <span className="tabular-nums text-gray-400">크롤링 {queued}건 대기</span>
+          <span className="tabular-nums text-gray-400">블로킹 작업 {n - SHARED_SLOTS}건 대기</span>
         </div>
       )}
 
+      {/* 슬롯을 얻지 못한 다른 작업들 */}
       <div className="mt-4 border-t border-black/5 pt-4">
-        <div className="mb-2 flex items-center gap-1.5 text-xs text-gray-500">
-          <Search className="h-3.5 w-3.5" /> 검색 · 메인페이지 요청
-        </div>
+        <p className="mb-2 text-xs text-gray-500">같은 공유 풀을 기다리는 다른 작업</p>
         <div className="flex flex-wrap gap-2">
-          {Array.from({ length: SEARCH_COUNT }).map((_, i) => {
-            const running = i < searchRunning
-            return (
-              <div key={i} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${running ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-rose-200 bg-rose-50 text-rose-500'}`}>
-                {running ? <Check className="h-3.5 w-3.5" /> : <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {running ? '응답' : '정지(대기)'}
-              </div>
-            )
-          })}
+          <WorkChip icon={<Search className="h-3.5 w-3.5" />} label="검색 쿼리" running={searchRun} />
+          <WorkChip icon={<Clock className="h-3.5 w-3.5" />} label="유튜브 폴링" running={youtubeRun} />
         </div>
         {meltdown && (
           <p className="mt-2 text-xs leading-relaxed text-rose-500">
-            블로킹 크롤링(Selenium)이 5~30초씩 공유풀을 붙잡아 검색이 슬롯을 얻지 못합니다 — 같은 commonPool을 쓰는 모든 비동기 작업이 함께 멈춥니다.
+            이미지 처리·DB 저장 같은 블로킹 작업이 3슬롯을 오래 붙잡아, 같은 commonPool을 쓰는 검색·메인페이지가 슬롯을 얻지 못하고 함께 멈춥니다.
           </p>
         )}
       </div>
@@ -242,16 +246,14 @@ function OffView({ crawl, searchRunning, searchBlocked, queued }: { crawl: numbe
   )
 }
 
-// ── ON: 다이어그램 기준 — 크롤링 논블로킹(FastAPI) + Bulkhead 4개 격리 풀 ───────
+// ── ON: 작업마다 전용 격리 풀 (다이어그램 Bulkhead 박스) ───────────────────────
 function OnView({
-  req,
   imgRunning,
   imgQueued,
   imgRejected,
   overload,
   onOverload,
 }: {
-  req: number
   imgRunning: number
   imgQueued: number
   imgRejected: number
@@ -259,102 +261,101 @@ function OnView({
   onOverload: () => void
 }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-      {/* 크롤링 경로: WebClient 논블로킹 → FastAPI (다이어그램 상단) */}
-      <div className="rounded-2xl border border-sky-200/70 bg-sky-50/40 p-4">
-        <PoolHeader icon={<Globe className="h-4 w-4" />} title="일반 URL 카드 · 크롤링 경로" sub="WebClient 논블로킹 위임 → FastAPI 서버 (크롤링 + AI 분석)" tone="info" />
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-1">
-            {Array.from({ length: Math.min(req, 8) }).map((_, i) => (
-              <motion.span key={i} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.04 }} className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-white px-1.5 py-1 text-[10px] text-sky-600">
-                <Check className="h-3 w-3" />
-              </motion.span>
-            ))}
-            {req > 8 && <span className="self-center text-[11px] text-sky-500">+{req - 8}</span>}
-          </div>
-          <ArrowRight className="h-4 w-4 text-sky-400" />
-          <span className="rounded-lg border border-sky-200 bg-white px-2.5 py-1.5 text-xs font-medium text-sky-700">FastAPI 서버 · 경량 크롤링(httpx·BeautifulSoup·GraphQL)</span>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid gap-4 md:grid-cols-2">
+      {/* 이미지 처리 풀 — 블로킹 I/O, 큐 초과 시 503 */}
+      <div className="rounded-2xl border border-black/10 bg-white p-4 sm:p-5">
+        <PoolHeader icon={<Zap className="h-4 w-4" />} title="이미지 처리 풀" sub={`imageExecutor · max ${IMG_MAX} · queue ${IMG_QUEUE} · AbortPolicy`} tone="neutral" accent={AMBER} />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {Array.from({ length: IMG_MAX }).map((_, i) => (
+            <Slot key={i} label={i < imgRunning ? '이미지' : '유휴'} color={i < imgRunning ? AMBER : SLATE} filled={i < imgRunning} long={false} />
+          ))}
         </div>
-        <p className="mt-2 text-xs leading-relaxed text-sky-700/80">
-          Selenium을 완전히 제거(100%→0%)하고 경량 API로 전환했습니다. moda-api는 스레드를 붙잡지 않고 HTTP만 대기하므로, 크롤링이 아무리 많이 와도 어떤 풀도 막지 않습니다.
+        <div className="mt-3">
+          <div className="mb-1 flex justify-between text-[11px] text-gray-400">
+            <span>큐</span>
+            <span className="tabular-nums">
+              {imgQueued} / {IMG_QUEUE}
+            </span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+            <motion.div className="h-full rounded-full" style={{ background: AMBER }} animate={{ width: `${(imgQueued / IMG_QUEUE) * 100}%` }} transition={{ duration: 0.3 }} />
+          </div>
+        </div>
+        <div className="mt-3 min-h-[30px]">
+          <AnimatePresence>
+            {imgRejected > 0 && (
+              <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="flex flex-wrap items-center gap-1.5">
+                {Array.from({ length: Math.min(imgRejected, 6) }).map((_, i) => (
+                  <motion.span key={i} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1, y: [0, -6, 0] }} transition={{ delay: i * 0.06, y: { repeat: Infinity, duration: 1.2 } }} className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-medium text-white">
+                    <Bell className="h-3 w-3" /> 503
+                  </motion.span>
+                ))}
+                <span className="text-[11px] text-rose-500">×{imgRejected} 즉시 거부 + FCM 재시도 안내</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <button
+          onClick={onOverload}
+          className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors ${overload ? 'bg-rose-500 text-white' : 'border border-black/15 text-gray-600 hover:border-black'}`}
+        >
+          <AlertTriangle className="h-3.5 w-3.5" />
+          {overload ? '폭주 해제' : `폭주 부하 (동시 ${BURST}건)`}
+        </button>
+      </div>
+
+      {/* 검색 쿼리 풀 — 완전 격리, 항상 정상 */}
+      <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/40 p-4 sm:p-5">
+        <PoolHeader icon={<Search className="h-4 w-4" />} title="검색 쿼리 풀" sub={`executorService · fixed ${SEARCH_POOL} · PG·ES 병렬 쿼리`} tone="good" />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {Array.from({ length: SEARCH_COUNT }).map((_, i) => (
+            <motion.div key={i} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-2.5 py-1.5 text-xs text-emerald-600">
+              <Check className="h-3.5 w-3.5" /> 응답 완료
+            </motion.div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-emerald-700/80">
+          이미지 처리 풀이 포화·폭주해도, 검색은 별도 fixed:10 풀이라 영향을 받지 않고 계속 응답합니다.
         </p>
       </div>
 
-      {/* Bulkhead 격리 풀 (다이어그램 Bulkhead 박스) */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* 이미지 처리 풀 — 블로킹 I/O, 큐 초과 시 503 */}
-        <div className="rounded-2xl border border-black/10 bg-white p-4 sm:p-5">
-          <PoolHeader icon={<Zap className="h-4 w-4" />} title="이미지 처리 풀" sub={`imageExecutor · max ${IMG_MAX} · queue ${IMG_QUEUE} · AbortPolicy`} tone="neutral" />
-          <div className="mt-3 flex flex-wrap gap-2">
-            {Array.from({ length: IMG_MAX }).map((_, i) => (
-              <Slot key={i} label={i < imgRunning ? '이미지' : '유휴'} color={i < imgRunning ? AMBER : SLATE} filled={i < imgRunning} long={false} />
-            ))}
-          </div>
-          <div className="mt-3">
-            <div className="mb-1 flex justify-between text-[11px] text-gray-400">
-              <span>큐</span>
-              <span className="tabular-nums">
-                {imgQueued} / {IMG_QUEUE}
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-              <motion.div className="h-full rounded-full" style={{ background: AMBER }} animate={{ width: `${(imgQueued / IMG_QUEUE) * 100}%` }} transition={{ duration: 0.3 }} />
-            </div>
-          </div>
-          <div className="mt-3 min-h-[30px]">
-            <AnimatePresence>
-              {imgRejected > 0 && (
-                <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="flex flex-wrap items-center gap-1.5">
-                  {Array.from({ length: Math.min(imgRejected, 6) }).map((_, i) => (
-                    <motion.span key={i} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1, y: [0, -6, 0] }} transition={{ delay: i * 0.06, y: { repeat: Infinity, duration: 1.2 } }} className="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-medium text-white">
-                      <Bell className="h-3 w-3" /> 503
-                    </motion.span>
-                  ))}
-                  <span className="text-[11px] text-rose-500">×{imgRejected} 즉시 거부 + FCM 재시도 안내</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          <button
-            onClick={onOverload}
-            className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors ${overload ? 'bg-rose-500 text-white' : 'border border-black/15 text-gray-600 hover:border-black'}`}
-          >
-            <AlertTriangle className="h-3.5 w-3.5" />
-            {overload ? '폭주 해제' : `폭주 부하 (동시 ${BURST}건)`}
-          </button>
+      {/* DB 저장 풀 */}
+      <div className="rounded-2xl border border-black/10 bg-white p-4 sm:p-5">
+        <PoolHeader icon={<Database className="h-4 w-4" />} title="DB 저장 풀" sub="cardSaveExecutor · 분석 완료 후 저장(수십 ms) → PostgreSQL" tone="neutral" accent={VIOLET} />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Slot key={i} label="DB 저장" color={VIOLET} filled long={false} />
+          ))}
         </div>
-
-        {/* 검색 쿼리 풀 — 완전 격리, 항상 정상 */}
-        <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/40 p-4 sm:p-5">
-          <PoolHeader icon={<Search className="h-4 w-4" />} title="검색 쿼리 풀" sub={`executorService · fixed ${SEARCH_POOL} · PG·ES 병렬 쿼리`} tone="good" />
-          <div className="mt-3 flex flex-wrap gap-2">
-            {Array.from({ length: SEARCH_COUNT }).map((_, i) => (
-              <motion.div key={i} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-2.5 py-1.5 text-xs text-emerald-600">
-                <Check className="h-3.5 w-3.5" /> 응답 완료
-              </motion.div>
-            ))}
-          </div>
-          <p className="mt-3 text-xs leading-relaxed text-emerald-700/80">
-            크롤링·이미지 풀이 포화·폭주해도, 검색은 별도 fixed:10 풀이라 영향을 받지 않고 계속 응답합니다.
-          </p>
-        </div>
+        <p className="mt-3 text-xs leading-relaxed text-gray-500">
+          Netty 이벤트 루프에서 DB 저장을 떼어내(thenApplyAsync) 전용 풀에서 실행 → 이벤트 루프 블로킹 방지.
+        </p>
       </div>
 
-      {/* 나머지 격리 풀 (다이어그램 하단) */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <MiniPool icon={<Database className="h-3.5 w-3.5" />} title="DB 저장 풀" sub="cardSaveExecutor · 분석 완료 후 DB 저장(수십 ms) → PostgreSQL" />
-        <MiniPool icon={<Clock className="h-3.5 w-3.5" />} title="유튜브 폴링 풀" sub="youtubeExecutor · 15초 간격 주기적 폴링 → Lilys API" />
+      {/* 유튜브 폴링 풀 */}
+      <div className="rounded-2xl border border-black/10 bg-white p-4 sm:p-5">
+        <PoolHeader icon={<Clock className="h-4 w-4" />} title="유튜브 폴링 풀" sub="youtubeExecutor · 15초 간격 주기적 폴링 → Lilys API" tone="neutral" accent={SKY} />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Slot key={i} label="폴링" color={SKY} filled long={false} />
+          ))}
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-gray-500">
+          장시간 폴링이 다른 풀을 점유하지 않도록 core:2로 격리 → 카드 생성·검색과 무관하게 동작.
+        </p>
       </div>
     </motion.div>
   )
 }
 
 // ── 공통 조각 ────────────────────────────────────────────────────────────────
-function PoolHeader({ icon, title, sub, tone }: { icon: ReactNode; title: string; sub: string; tone: 'neutral' | 'danger' | 'good' | 'info' }) {
-  const toneCls = tone === 'danger' ? 'text-rose-500' : tone === 'good' ? 'text-emerald-600' : tone === 'info' ? 'text-sky-700' : 'text-gray-700'
+function PoolHeader({ icon, title, sub, tone, accent }: { icon: ReactNode; title: string; sub: string; tone: 'neutral' | 'danger' | 'good'; accent?: string }) {
+  const toneCls = tone === 'danger' ? 'text-rose-500' : tone === 'good' ? 'text-emerald-600' : 'text-gray-700'
   return (
     <div className="flex items-center gap-2">
-      <span className={toneCls}>{icon}</span>
+      <span className={toneCls} style={accent && tone === 'neutral' ? { color: accent } : undefined}>
+        {icon}
+      </span>
       <div>
         <p className={`text-sm font-medium ${toneCls}`}>{title}</p>
         <p className="text-[11px] text-gray-400">{sub}</p>
@@ -363,14 +364,14 @@ function PoolHeader({ icon, title, sub, tone }: { icon: ReactNode; title: string
   )
 }
 
-function MiniPool({ icon, title, sub }: { icon: ReactNode; title: string; sub: string }) {
+function WorkChip({ icon, label, running }: { icon: ReactNode; label: string; running: boolean }) {
   return (
-    <div className="flex items-start gap-2 rounded-xl border border-black/10 bg-white px-3 py-2.5">
-      <span className="mt-0.5 text-gray-500">{icon}</span>
-      <div>
-        <p className="text-xs font-medium text-gray-700">{title}</p>
-        <p className="text-[11px] leading-relaxed text-gray-400">{sub}</p>
-      </div>
+    <div className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${running ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-rose-200 bg-rose-50 text-rose-500'}`}>
+      {icon}
+      {label}
+      <span className="text-gray-300">·</span>
+      {running ? <Check className="h-3.5 w-3.5" /> : <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+      {running ? '응답' : '정지(대기)'}
     </div>
   )
 }
