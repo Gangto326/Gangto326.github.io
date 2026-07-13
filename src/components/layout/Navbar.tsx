@@ -6,7 +6,6 @@ import { scrollToId } from '@/lib/scroll'
 const links = [
   { id: 'projects', label: 'PROJECTS' },
   { id: 'about', label: 'ABOUT' },
-  { id: 'contact', label: 'CONTACT' },
 ]
 
 export function Navbar() {
@@ -36,6 +35,12 @@ export function Navbar() {
                 {l.label}
               </button>
             ))}
+            <a
+              href={`mailto:${profile.email}`}
+              className="text-xs tracking-widest text-gray-600 transition-colors hover:text-black"
+            >
+              CONTACT
+            </a>
           </div>
           <a
             href={profile.github}

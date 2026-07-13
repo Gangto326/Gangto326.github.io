@@ -63,30 +63,30 @@
 
 ### 1) OJO(오호) — 시각장애인 보행 보조 스마트 안경
 - 스택: Python·FastAPI·SQLAlchemy·MySQL·Redis / PyTorch·ONNX·YOLOv11·MiDaS·MediaPipe / Kotlin·WearOS / RPi·Galaxy Watch
-- 역할: 팀장 + AI·BE (6주, 6인) · GitHub: **미확보(요청 필요)**
+- 역할: 팀장 + AI·BE (6주, 6인) · GitHub: **`github.com/Gangto326/OJO`**
 - 하이라이트: 다중 AI 실시간 파이프라인(Eager 병렬+조건부 추론, 320→200→18ms), 깊이 기반 미학습 장애물 감지, LLM Pre-fetching(3.3→1.3s)
 - **확정 데모: AI 파이프라인 시뮬레이터** — 순차/Eager병렬/조건부 모드 토글 → 3개 모델 실행 바 애니메이션 + 실시간 fps 카운터 (실측 수치 하드코딩)
 
 ### 2) LIDAR-Hyundai — 현대제철 미세먼지 라이다 관제 플랫폼
 - 스택: Next.js16·React19·TS·Zustand·Tailwind / FastAPI(Py)+Spring Boot(Java) 폴리글랏 / PostgreSQL15+PostGIS·pg_partman·H3 / AWS EC2·S3
-- 역할: BE·DB·Infra, 기여 60% (3개월, 2인) · GitHub: **`github.com/skybory/LIDAR-Hyundai`** (운영 samwoolidar.co.kr)
+- 역할: BE·DB·Infra, 기여 60% (3개월, 2인) · GitHub: **없음(비공개)** · 운영 samwoolidar.co.kr
 - 하이라이트: H3 Lv10 육각셀 사전집계+파티션 DROP으로 **저장 97%↓**, MULTIPOLYGON 디커플링+유클리드 근사(오차 0.1%), cell×area 도메인 분리
 - **확정 데모: H3 격자 압축 시각화** — raw 점 수천 개 → 육각 셀 집계 → "20만 행→5,000 셀/−97%" 카운터 + 해상도 슬라이더
 
 ### 3) 똑똑캡(SmartCap) — 후방 위험 감지 스마트 안전모
 - 스택: FastAPI·Python·Java·Spring Boot·JPA / PyTorch·YOLOv8-seg·ByteTrack·OpenCV(Homography) / PostgreSQL·Redis / React·Zustand·Recharts / ESP32-CAM
-- 역할: BE·AI·DB·기획, 기여 17% (6주, 6인) · SSAFY 특화 우수상 1등 · GitHub: **미확보(요청 필요)**
+- 역할: BE·AI·DB·기획, 기여 17% (6주, 6인) · SSAFY 특화 우수상 1등 · GitHub: **`github.com/Gangto326/SmartCap`**
 - 하이라이트: 객체별 3종 메트릭(AABB높이/단면지름/소실점), Homography **1회 계산으로 3개 파이프라인 재사용**(낙상·수평보정·계단오탐, 연산 50%↓), 센서 대비 96% 경량화
 - **확정 데모: 객체별 3종 메트릭 시뮬레이터** — 차량/파이프/계단을 거리·회전 슬라이더로 조작 → 판별식별 SAFE→WARNING→DANGER (기하 공식 재현, 실 CV 아님)
 
 ### 4) MODA(모다) — AI 콘텐츠 큐레이션 포탈
 - 스택: Java17·Spring Boot3.4 / FastAPI·Ollama·SentenceTransformer / PostgreSQL·Elasticsearch(Nori)·Redis / Kotlin·Compose / Jenkins·FCM
-- 역할: BE·DB·기획, 기여 17% (6주, 6인) · SSAFY 공통 우수상 1등 · GitHub: **미확보(요청 필요)**
+- 역할: BE·DB·기획, 기여 17% (6주, 6인) · SSAFY 공통 우수상 1등 · GitHub: **`github.com/Gangto326/MODA`**
 - 하이라이트: Bulkhead 쓰레드풀 격리로 동시처리 3→10건·CPU피크 −77%, Netty 이벤트루프/트랜잭션 경계 제어, AFTER_COMMIT으로 ES-PG Ghost Data 차단
 - **확정 데모: 쓰레드풀 고갈 Bulkhead 시뮬레이터** — 동시요청 슬라이더+Bulkhead ON/OFF → 공유풀 마비 vs 격리풀 정상응답 애니메이션
 
 ### 대기 입력
-- **GitHub URL 3개**: OJO / 똑똑캡 / MODA
+- **GitHub URL**: OJO·똑똑캡·MODA 확보 완료(`Gangto326/OJO`·`Gangto326/SmartCap`·`Gangto326/MODA`). LIDAR는 비공개(링크 없음).
 - **이미지(PNG/JPG)**: OJO(안경 착용·인식 화면), LIDAR(대시보드 히트맵), 똑똑캡(안전모 실물·감지 캡처 4컷), MODA(앱 3컷·로고) — 개발 진행하며 필요 시점에 요청
 - **디자인 템플릿**: 루트 `/templates/` (커밋 3 착수 전 필요)
 

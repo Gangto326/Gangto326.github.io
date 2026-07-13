@@ -22,11 +22,9 @@ export function Hero() {
               AI · BACKEND ENGINEER
             </p>
             <h1 className="text-5xl font-light leading-[1.05] tracking-tight sm:text-6xl xl:text-7xl">
-              I BUILD
+              사용자 경험을
               <br />
-              SYSTEMS YOU
-              <br />
-              CAN EXPERIENCE.
+              설계하는 개발자
             </h1>
 
             <div className="mt-10">
@@ -40,11 +38,6 @@ export function Hero() {
                   <span className="absolute -bottom-4 -left-4 -right-4 -top-4 animate-spin-slow rounded-full border border-black opacity-40" />
                 </span>
               </Button>
-              <p className="mt-8 max-w-md text-sm leading-relaxed text-gray-600">
-                4개의 프로젝트를 직접 클릭하며 이해하는 체험형 포트폴리오.
-                다중 AI 파이프라인부터 공간 데이터 압축까지, 문제를 설계로
-                풀어낸 기록을 인터랙티브 데모로 확인하세요.
-              </p>
 
               <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-xs tracking-widest text-gray-500">
                 <span>
