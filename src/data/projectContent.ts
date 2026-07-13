@@ -1,6 +1,13 @@
+/** 기능 미디어. 경로는 BASE_URL 기준 상대(assets/…). 없으면 "이미지 준비 중" 자리표시. */
+export type FeatureMedia =
+  | { kind: 'image'; src: string }
+  | { kind: 'video'; src: string }
+  | { kind: 'sequence'; srcs: string[]; interval?: number; ratio?: string }
+
 export interface Feature {
   title: string
   desc: string
+  media?: FeatureMedia
 }
 
 export interface Troubleshooting {
@@ -31,22 +38,39 @@ export const projectContent: Record<string, ProjectContent> = {
       {
         title: '장애물 감지 / 회피',
         desc: 'YOLO와 깊이 추정을 결합해 학습하지 않은 장애물도 방향을 안내합니다.',
+        media: {
+          kind: 'sequence',
+          ratio: '806 / 724',
+          srcs: [
+            'assets/ojo/obstacle-1.jpg',
+            'assets/ojo/obstacle-2.jpg',
+            'assets/ojo/obstacle-3.jpg',
+            'assets/ojo/obstacle-4.jpg',
+            'assets/ojo/obstacle-5.jpg',
+            'assets/ojo/obstacle-6.jpg',
+            'assets/ojo/obstacle-7.jpg',
+          ],
+        },
       },
       {
         title: '횡단보도 안전 횡단',
         desc: '신호등을 인식하고 차량 정지를 판단하는 상태 머신으로 안전한 횡단을 돕습니다.',
+        media: { kind: 'video', src: 'assets/ojo/crosswalk.mp4' },
       },
       {
         title: '버스 번호 인식',
         desc: '정류장 체류를 감지하면 제스처 이전에 선제적으로 번호판을 읽어 즉시 안내합니다.',
+        media: { kind: 'image', src: 'assets/ojo/bus-number.jpg' },
       },
       {
         title: '손 제스처 물체 인식',
         desc: '물체를 쥐면 Vision LLM이 식별해 음성으로 알려줍니다.',
+        media: { kind: 'image', src: 'assets/ojo/hand-gesture.jpg' },
       },
       {
         title: '낙상 감지',
         desc: 'Galaxy Watch 센서로 실시간 낙상을 판별하고 긴급 알림을 보냅니다.',
+        media: { kind: 'image', src: 'assets/ojo/fall-detection.jpg' },
       },
     ],
     troubleshooting: [

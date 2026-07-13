@@ -1,6 +1,6 @@
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ArrowUpRight, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react'
 import { GithubIcon } from '@/components/icons/GithubIcon'
 import { Container } from '@/components/Container'
@@ -9,7 +9,7 @@ import { Footer } from '@/components/layout/Footer'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
 import { experienceRegistry } from '@/experiences/registry'
 import { projects } from '@/data/projects'
-import { projectContent } from '@/data/projectContent'
+import { projectContent, type FeatureMedia as FeatureMediaType } from '@/data/projectContent'
 
 /** 본문 내 **강조** 마커를 굵은 글씨로 렌더링 */
 function emphasize(text: string) {
@@ -43,6 +43,62 @@ function ImagePlaceholder({ className = '' }: { className?: string }) {
       <span className="text-xs">이미지 준비 중</span>
     </div>
   )
+}
+
+/** 이미지 시퀀스 — 지정 간격(기본 2초)마다 순서대로 crossfade 순환 */
+function FeatureSequence({ srcs, interval = 2000, ratio, order }: { srcs: string[]; interval?: number; ratio?: string; order: string }) {
+  const [idx, setIdx] = useState(0)
+  useEffect(() => {
+    if (srcs.length < 2) return
+    const id = setInterval(() => setIdx((i) => (i + 1) % srcs.length), interval)
+    return () => clearInterval(id)
+  }, [srcs.length, interval])
+  return (
+    <div className={`relative overflow-hidden rounded-2xl border border-black/10 bg-slate-100 ${order}`} style={{ aspectRatio: ratio ?? '16 / 9' }}>
+      <AnimatePresence>
+        <motion.img
+          key={idx}
+          src={srcs[idx]}
+          alt=""
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      </AnimatePresence>
+      <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 gap-1.5">
+        {srcs.map((_, i) => (
+          <span key={i} className={`h-1.5 w-1.5 rounded-full transition-colors ${i === idx ? 'bg-white' : 'bg-white/45'}`} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** 기능 미디어 — 영상(자동재생·무음), 이미지 시퀀스(2초 순환), 단일 이미지, 없으면 자리표시 */
+function FeatureMedia({ media, order }: { media?: FeatureMediaType; order: string }) {
+  const base = import.meta.env.BASE_URL
+  if (!media) return <ImagePlaceholder className={`aspect-video ${order}`} />
+  if (media.kind === 'video') {
+    return (
+      <div className={`overflow-hidden rounded-2xl bg-black aspect-video ${order}`}>
+        <video
+          src={base + media.src}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="h-full w-full object-cover"
+        />
+      </div>
+    )
+  }
+  if (media.kind === 'sequence') {
+    return <FeatureSequence srcs={media.srcs.map((s) => base + s)} interval={media.interval} ratio={media.ratio} order={order} />
+  }
+  return <img src={base + media.src} alt="" className={`block w-full rounded-2xl border border-black/10 bg-slate-50 ${order}`} />
 }
 
 export default function ProjectDetail() {
@@ -142,9 +198,7 @@ export default function ProjectDetail() {
                 transition={{ duration: 0.5 }}
                 className="grid items-center gap-6 sm:grid-cols-2 sm:gap-10"
               >
-                <ImagePlaceholder
-                  className={`aspect-video ${i % 2 === 1 ? 'sm:order-2' : ''}`}
-                />
+                <FeatureMedia media={f.media} order={i % 2 === 1 ? 'sm:order-2' : ''} />
                 <div className={i % 2 === 1 ? 'sm:order-1' : ''}>
                   <span className="text-sm text-gray-300">
                     {String(i + 1).padStart(2, '0')}
