@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowUpRight, ChevronLeft, ChevronRight, ImageIcon } from 'l
 import { GithubIcon } from '@/components/icons/GithubIcon'
 import { Container } from '@/components/Container'
 import { Navbar } from '@/components/layout/Navbar'
+import { FloatingNav } from '@/components/layout/FloatingNav'
 import { Footer } from '@/components/layout/Footer'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
 import { experienceRegistry } from '@/experiences/registry'
@@ -23,6 +24,14 @@ function emphasize(text: string) {
     ),
   )
 }
+
+const projectNav = [
+  { id: 'overview', label: '개요' },
+  { id: 'features', label: '기능' },
+  { id: 'troubleshooting', label: '문제해결' },
+  { id: 'retrospective', label: '회고' },
+  { id: 'demo', label: '데모' },
+]
 
 function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
@@ -138,6 +147,7 @@ export default function ProjectDetail() {
   return (
     <div className="min-h-screen bg-[#f8f8f8] text-black">
       <Navbar />
+      <FloatingNav items={projectNav} />
       <Container className="py-16">
         <Link
           to="/"
@@ -194,7 +204,7 @@ export default function ProjectDetail() {
         )}
 
         {/* 개요 */}
-        <section className="py-14">
+        <section id="overview" className="scroll-mt-24 py-14">
           <SectionHeading eyebrow="OVERVIEW" title="프로젝트 개요" />
           <p className="mt-6 max-w-2xl leading-relaxed text-gray-700">
             {content.overview}
@@ -202,7 +212,7 @@ export default function ProjectDetail() {
         </section>
 
         {/* 핵심 기능 — 하나씩, 이미지와 함께 */}
-        <section className="border-t border-black/10 py-14">
+        <section id="features" className="scroll-mt-24 border-t border-black/10 py-14">
           <SectionHeading eyebrow="FEATURES" title="핵심 기능" />
           <div className="mt-10 space-y-12">
             {content.features.map((f, i) => (
@@ -230,7 +240,7 @@ export default function ProjectDetail() {
         </section>
 
         {/* 트러블슈팅 — 가로 배치 + 수동 슬라이드 */}
-        <section className="border-t border-black/10 py-14">
+        <section id="troubleshooting" className="scroll-mt-24 border-t border-black/10 py-14">
           <div className="flex items-end justify-between gap-4">
             <SectionHeading eyebrow="TROUBLESHOOTING" title="기술적 문제 해결" />
             <div className="flex items-center gap-3">
@@ -302,7 +312,7 @@ export default function ProjectDetail() {
         </section>
 
         {/* 회고 — 포인트 굵게 */}
-        <section className="border-t border-black/10 py-14">
+        <section id="retrospective" className="scroll-mt-24 border-t border-black/10 py-14">
           <SectionHeading eyebrow="RETROSPECTIVE" title="회고" />
           <div className="mt-8 space-y-8">
             {content.retrospective.map((r, i) => (
@@ -319,7 +329,7 @@ export default function ProjectDetail() {
         </section>
 
         {/* 체험형 데모 (맨 아래) */}
-        <section className="border-t border-black/10 py-14">
+        <section id="demo" className="scroll-mt-24 border-t border-black/10 py-14">
           {Demo ? (
             <Suspense
               fallback={
