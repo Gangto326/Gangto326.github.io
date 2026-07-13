@@ -2,18 +2,48 @@
 
 김강토님의 GitHub Pages 배포용 **체험형 포트폴리오**. 4개 프로젝트를 소개하고, 각 프로젝트의
 핵심 원리를 방문자가 직접 조작하며 이해하는 **인터랙티브 데모("EXPERIENCE")**를 제공한다.
-다음 작업은 **③ 똑똑캡 데모** 제작. (자세한 전체 계획은 `PLAN.md` 참고)
+**다음 작업은 실제 배포(사용자 승인 후 push).** 아래 "배포 절차" 참고. (전체 계획은 `PLAN.md`)
 
 ---
 
-## 지금까지 진행 상황
-- ✅ 스캐폴딩 · 배포 파이프라인 · 디자인 시스템
+## 지금까지 진행 상황 (4개 데모 + 콘텐츠·에셋 모두 완료)
+- ✅ 스캐폴딩 · 배포 파이프라인(workflow) · 디자인 시스템
 - ✅ 메인 랜딩(Hero/About/Projects/Contact) · 상세 페이지(개요→기능→트러블슈팅→회고→체험)
 - ✅ **OJO** 데모 — 버스 Eager Evaluation 시퀀스 타임라인 (영상 임베드)
 - ✅ **LIDAR** 데모 — H3 격자 압축 시각화(실데이터) + 실제 보간↔H3 지도 crossfade
-- ⬜ **똑똑캡** 데모 — 객체별 3종 메트릭 시뮬레이터 ← **다음 작업**
-- ⬜ **MODA** 데모 — 쓰레드풀 Bulkhead 시뮬레이터
-- ⬜ 콘텐츠 마감 · 실제 배포 검증
+- ✅ **똑똑캡** 데모 — three.js 실제 3D 투영 기반 객체별 3종 메트릭 시뮬레이터(양방향 상태 머신, lazy 코드스플릿)
+- ✅ **MODA** 데모 — 쓰레드풀 Bulkhead 시뮬레이터(다이어그램 기준: 공유풀 병목 vs 격리풀 4개 + 503 fail-fast)
+- ✅ **콘텐츠·에셋 연결** — 프로젝트 대표 이미지(thumb: OJO/똑똑캡/모다, LIDAR는 없음→그라디언트 폴백),
+  각 기능에 실제 이미지/영상/시퀀스/몽타주 매칭, 이미지 없는 기능 제거, 카드 스택 한 줄 고정
+- ⬜ **실제 배포** — main push → GitHub Actions 빌드·배포 (아래 절차) ← **다음 작업**
+- ⬜ 배포 후 검증(라이브 사이트 4개 데모·이미지·모바일 반응형·Lighthouse)
+
+## 배포 절차 (GitHub Pages · User Pages 루트 도메인)
+> 모든 작업물은 로컬 `feat/portfolio-setup` 브랜치에 커밋돼 있고(현재 HEAD `72a2ea2`),
+> **원격(origin)은 아직 비어 있다**(아무것도 push 안 됨). **push는 사용자 승인 필수.**
+
+1. **GitHub 저장소 설정 (선행 필수)**: Settings → Pages → **Source = "GitHub Actions"** 로 지정.
+   새 저장소라 이걸 안 하면 deploy 잡이 "Pages not enabled" 로 실패한다.
+2. **push (배포 트리거)**: 로컬에 `main` 브랜치가 없으므로 `git push origin main`은 실패한다.
+   대신 현재 브랜치 커밋을 원격 `main`으로 올린다:
+   ```bash
+   git push -u origin feat/portfolio-setup:main
+   # (백업으로 작업 브랜치도 함께 올릴 수 있음)
+   git push -u origin feat/portfolio-setup
+   ```
+   `.github/workflows/deploy.yml` 이 `main` push에 반응해 `npm ci → npm run build → deploy-pages` 실행.
+3. **확인**: 저장소 **Actions** 탭에서 "Deploy to GitHub Pages" 워크플로 성공 확인 →
+   **https://gangto326.github.io/** 접속.
+4. **배포 후 검증**: 4개 프로젝트 상세의 데모 동작, 대표/기능 이미지·영상(자동재생) 로딩,
+   `#/project/:id` 새로고침 딥링크(HashRouter), 모바일 반응형, Lighthouse(성능/접근성).
+
+## 배포 관련 유의사항
+- **vite `base: '/'`** (User Pages 루트 도메인용) — 확인됨. 정상.
+- **gh CLI 미설치** — Pages Source 설정·Actions 모니터링은 GitHub 웹 UI에서 수동으로.
+- **모다 기능 gif 2개**(`assets/moda/scrap-*.gif`, 합 ~8MB)는 이 환경에 gif 압축 도구(gifsicle/ffmpeg)가
+  없어 원본 그대로 커밋됨. 배포엔 지장 없으나, 추후 gifsicle/ffmpeg(mp4)로 크게 줄일 여지 있음.
+- **횡단보도 영상**(`assets/ojo/crosswalk.mp4`, 8.5MB)도 ffmpeg 부재로 원본. 동일하게 추후 압축 여지.
+- 대기 중 입력: OJO·똑똑캡·MODA **GitHub URL**(카드 버튼용). LIDAR만 확보(`github.com/skybory/LIDAR-Hyundai`).
 
 ## 기술 스택 / 구조
 - **React 18 + Vite + TypeScript + Tailwind 3 + shadcn/ui**, 라우팅 HashRouter, 애니메이션 framer-motion
