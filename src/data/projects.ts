@@ -45,6 +45,7 @@ export const projects: Project[] = [
     highlight: '구역 통계 넓이 기준 H3 집계로 저장 약 98% 절감 · 실시간 히트맵',
     experience: 'H3 격자 압축 시각화',
     accent: 'from-sky-400 via-cyan-300 to-emerald-200',
+    thumb: 'assets/lidar/heatmap.jpg',
   },
   {
     id: 'smartcap',

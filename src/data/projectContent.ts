@@ -187,12 +187,12 @@ export const projectContent: Record<string, ProjectContent> = {
       {
         title: '센서리스 낙상 감지',
         desc: 'IMU 없이 영상만으로 급격한 머리 움직임을 판별합니다.',
-        media: { kind: 'sequence', ratio: '16 / 9', srcs: ['assets/smartcap/fall-1.jpg', 'assets/smartcap/fall-2.jpg'] },
+        media: { kind: 'sequence', ratio: '1200 / 657', srcs: ['assets/smartcap/fall-1.jpg', 'assets/smartcap/fall-2.jpg'] },
       },
       {
         title: '자동 수평 보정',
         desc: '사용자 행동 패턴을 기반으로 스스로 영점을 조절합니다.',
-        media: { kind: 'sequence', ratio: '16 / 9', srcs: ['assets/smartcap/level-1.jpg', 'assets/smartcap/level-2.jpg'] },
+        media: { kind: 'sequence', ratio: '1200 / 642', srcs: ['assets/smartcap/level-1.jpg', 'assets/smartcap/level-2.jpg'] },
       },
       {
         title: '실시간 모니터링 대시보드',

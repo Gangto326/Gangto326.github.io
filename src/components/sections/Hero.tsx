@@ -1,15 +1,27 @@
 import { motion } from 'framer-motion'
-import { ArrowDown } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ArrowDown, ArrowUpRight } from 'lucide-react'
 import { Container } from '@/components/Container'
+import { profile } from '@/data/profile'
 import { scrollToId } from '@/lib/scroll'
 
 const PROFILE_SRC = `${import.meta.env.BASE_URL}assets/profile.jpg`
 
+const stats = [
+  { value: '4', label: 'PROJECTS' },
+  { value: 'AI + BACKEND', label: 'FOCUS' },
+  { value: '우수상 1등 다수', label: 'SSAFY AWARDS' },
+]
+
 export function Hero() {
   return (
-    <section id="top" className="bg-[#f8f8f8] text-black">
-      <Container className="pb-24 pt-10 sm:pt-16">
+    <section id="top" className="relative overflow-hidden bg-[#f8f8f8] text-black">
+      {/* 좌상단에서 옅어지는 도트 그리드 */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle,rgba(0,0,0,0.07)_1px,transparent_1px)] [background-size:28px_28px] [mask-image:radial-gradient(ellipse_80%_70%_at_15%_10%,black,transparent)]"
+      />
+
+      <Container className="relative pb-24 pt-10 sm:pt-16">
         <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
           {/* 좌: 텍스트 */}
           <motion.div
@@ -18,40 +30,46 @@ export function Hero() {
             transition={{ duration: 0.6, ease: 'easeOut' }}
             className="order-2 lg:order-1"
           >
-            <p className="mb-6 text-sm tracking-[0.3em] text-gray-500">
+            <p className="mb-6 flex items-center gap-3 text-sm tracking-[0.3em] text-gray-500">
+              <span className="h-px w-8 bg-black/30" aria-hidden="true" />
               AI · BACKEND ENGINEER
             </p>
-            <h1 className="text-5xl font-light leading-[1.05] tracking-tight sm:text-6xl xl:text-7xl">
-              사용자 경험을
+            <h1 className="text-5xl font-light leading-[1.08] tracking-tight sm:text-6xl xl:text-7xl">
+              사용자{' '}
+              <span className="bg-gradient-to-r from-pink-500 via-orange-400 to-amber-400 bg-clip-text text-transparent">
+                경험
+              </span>
+              을
               <br />
               설계하는 개발자
             </h1>
 
-            <div className="mt-10">
-              <Button
-                variant="outline"
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              <button
                 onClick={() => scrollToId('projects')}
-                className="relative rounded-full border-2 px-8"
+                className="group inline-flex items-center gap-2.5 rounded-full bg-black px-7 py-3.5 text-xs font-medium tracking-[0.15em] text-white transition-colors hover:bg-gray-800"
               >
-                <span className="relative">
-                  EXPLORE PROJECTS
-                  <span className="absolute -bottom-4 -left-4 -right-4 -top-4 animate-spin-slow rounded-full border border-black opacity-40" />
-                </span>
-              </Button>
+                EXPLORE PROJECTS
+                <ArrowDown className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-y-0.5" />
+              </button>
+              <a
+                href={`mailto:${profile.email}`}
+                className="group inline-flex items-center gap-1.5 px-3 py-3.5 text-xs font-medium tracking-[0.15em] text-gray-600 transition-colors hover:text-black"
+              >
+                CONTACT
+                <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </a>
+            </div>
 
-              <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-xs tracking-widest text-gray-500">
-                <span>
-                  <strong className="font-medium text-black">4</strong> PROJECTS
-                </span>
-                <span>
-                  <strong className="font-medium text-black">AI</strong> +
-                  BACKEND
-                </span>
-                <span>
-                  SSAFY 우수상{' '}
-                  <strong className="font-medium text-black">1등</strong> 다수
-                </span>
-              </div>
+            <div className="mt-14 flex items-stretch gap-7 sm:gap-9">
+              {stats.map((s, i) => (
+                <div key={s.label} className={i > 0 ? 'border-l border-black/10 pl-7 sm:pl-9' : ''}>
+                  <p className="text-base font-medium tracking-tight sm:text-lg">{s.value}</p>
+                  <p className="mt-1.5 text-[10px] tracking-[0.2em] text-gray-500 sm:text-[11px]">
+                    {s.label}
+                  </p>
+                </div>
+              ))}
             </div>
           </motion.div>
 

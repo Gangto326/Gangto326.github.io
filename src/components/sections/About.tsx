@@ -8,7 +8,8 @@ export function About() {
       <Container>
         <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <p className="mb-3 text-sm tracking-[0.3em] text-gray-500">
+            <p className="mb-3 flex items-center gap-3 text-sm tracking-[0.3em] text-gray-500">
+              <span className="h-px w-8 bg-black/30" aria-hidden="true" />
               WHO I AM
             </p>
             <h2 className="text-4xl font-light tracking-tight sm:text-5xl">
@@ -25,9 +26,16 @@ export function About() {
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.5 }}
           >
-            <div className="space-y-4">
+            <div className="space-y-5">
               {profile.bio.map((line, i) => (
-                <p key={i} className="text-base leading-relaxed text-gray-700">
+                <p
+                  key={i}
+                  className={
+                    i === 0
+                      ? 'text-lg font-normal leading-relaxed text-gray-900 sm:text-xl'
+                      : 'text-base leading-relaxed text-gray-600'
+                  }
+                >
                   {line}
                 </p>
               ))}

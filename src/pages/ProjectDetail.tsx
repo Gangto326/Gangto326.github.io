@@ -1,6 +1,14 @@
-import { Suspense, useEffect, useState } from 'react'
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject,
+} from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
 import { ArrowLeft, ArrowUpRight, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react'
 import { GithubIcon } from '@/components/icons/GithubIcon'
 import { Container } from '@/components/Container'
@@ -10,7 +18,11 @@ import { Footer } from '@/components/layout/Footer'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
 import { experienceRegistry } from '@/experiences/registry'
 import { projects } from '@/data/projects'
-import { projectContent, type FeatureMedia as FeatureMediaType } from '@/data/projectContent'
+import {
+  projectContent,
+  type Feature,
+  type FeatureMedia as FeatureMediaType,
+} from '@/data/projectContent'
 
 /** 본문 내 **강조** 마커를 굵은 글씨로 렌더링 */
 function emphasize(text: string) {
@@ -55,15 +67,37 @@ function ImagePlaceholder({ className = '' }: { className?: string }) {
 }
 
 /** 이미지 시퀀스 — 지정 간격(기본 2초)마다 순서대로 crossfade 순환 */
-function FeatureSequence({ srcs, interval = 2000, ratio, order }: { srcs: string[]; interval?: number; ratio?: string; order: string }) {
+function FeatureSequence({
+  srcs,
+  interval = 2000,
+  ratio,
+  order,
+  stage = false,
+}: {
+  srcs: string[]
+  interval?: number
+  ratio?: string
+  order: string
+  stage?: boolean
+}) {
   const [idx, setIdx] = useState(0)
   useEffect(() => {
     if (srcs.length < 2) return
     const id = setInterval(() => setIdx((i) => (i + 1) % srcs.length), interval)
     return () => clearInterval(id)
   }, [srcs.length, interval])
+  const r = ratio ?? '16 / 9'
   return (
-    <div className={`relative overflow-hidden rounded-2xl border border-black/10 bg-slate-100 ${order}`} style={{ aspectRatio: ratio ?? '16 / 9' }}>
+    <div
+      className={`relative w-full overflow-hidden rounded-2xl border border-black/10 bg-slate-100 ${
+        stage ? 'lg:w-[var(--seq-w)]' : ''
+      } ${order}`}
+      style={{
+        aspectRatio: r,
+        // 스테이지(높이 440px) 안에서 비율을 유지한 최대 크기: 흰 여백(레터박스) 방지
+        ...(stage ? { ['--seq-w']: `min(100%, calc(440px * (${r})))` } : {}),
+      } as CSSProperties}
+    >
       <AnimatePresence>
         <motion.img
           key={idx}
@@ -73,7 +107,7 @@ function FeatureSequence({ srcs, interval = 2000, ratio, order }: { srcs: string
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-contain"
         />
       </AnimatePresence>
       <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 gap-1.5">
@@ -85,13 +119,18 @@ function FeatureSequence({ srcs, interval = 2000, ratio, order }: { srcs: string
   )
 }
 
-/** 기능 미디어 — 영상(자동재생·무음), 이미지 시퀀스(2초 순환), 단일 이미지, 없으면 자리표시 */
-function FeatureMedia({ media, order }: { media?: FeatureMediaType; order: string }) {
+/**
+ * 기능 미디어 — 영상(자동재생·무음), 이미지 시퀀스(2초 순환), 단일 이미지, 없으면 자리표시.
+ * stage: lg에서 고정 높이 스테이지(부모 lg:h-[440px] flex) 안에 맞춰 비율 유지 축소.
+ */
+function FeatureMedia({ media, order, stage = false }: { media?: FeatureMediaType; order: string; stage?: boolean }) {
   const base = import.meta.env.BASE_URL
-  if (!media) return <ImagePlaceholder className={`aspect-video ${order}`} />
+  if (!media) return <ImagePlaceholder className={`aspect-video w-full ${order}`} />
   if (media.kind === 'video') {
     return (
-      <div className={`overflow-hidden rounded-2xl bg-black aspect-video ${order}`}>
+      <div
+        className={`aspect-video w-full overflow-hidden rounded-2xl bg-black ${stage ? 'lg:max-h-full' : ''} ${order}`}
+      >
         <video
           src={base + media.src}
           autoPlay
@@ -99,24 +138,213 @@ function FeatureMedia({ media, order }: { media?: FeatureMediaType; order: strin
           loop
           playsInline
           preload="metadata"
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
         />
       </div>
     )
   }
   if (media.kind === 'sequence') {
-    return <FeatureSequence srcs={media.srcs.map((s) => base + s)} interval={media.interval} ratio={media.ratio} order={order} />
+    return (
+      <FeatureSequence
+        srcs={media.srcs.map((s) => base + s)}
+        interval={media.interval}
+        ratio={media.ratio}
+        order={order}
+        stage={stage}
+      />
+    )
   }
   if (media.kind === 'montage') {
     return (
-      <div className={`flex items-start gap-3 ${order}`}>
+      <div className={`flex items-start gap-3 ${stage ? 'lg:h-full lg:items-center lg:justify-center' : ''} ${order}`}>
         {media.srcs.map((s) => (
-          <img key={s} src={base + s} alt="" loading="lazy" className="min-w-0 flex-1 rounded-2xl border border-black/10 bg-slate-50" />
+          <img
+            key={s}
+            src={base + s}
+            alt=""
+            className={`min-w-0 flex-1 rounded-2xl border border-black/10 bg-slate-50 ${
+              stage ? 'lg:h-full lg:w-auto lg:flex-none lg:object-contain' : ''
+            }`}
+          />
         ))}
       </div>
     )
   }
-  return <img src={base + media.src} alt="" loading="lazy" className={`block w-full rounded-2xl border border-black/10 bg-slate-50 ${order}`} />
+  return (
+    <img
+      src={base + media.src}
+      alt=""
+      className={`block w-full rounded-2xl border border-black/10 bg-slate-50 ${
+        stage ? 'lg:h-auto lg:max-h-full lg:w-auto lg:max-w-full' : ''
+      } ${order}`}
+    />
+  )
+}
+
+/** 터치 기기 여부 — 드래그 제스처는 터치에서만 활성화 (데스크톱은 휠·화살표) */
+function useIsTouch() {
+  const [touch, setTouch] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)')
+    const update = () => setTouch(mq.matches || 'ontouchstart' in window)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+  return touch
+}
+
+/**
+ * 요소 위에서 트랙패드·휠 가로 스와이프만으로 슬라이드를 넘기게 한다.
+ * React onWheel은 passive라 preventDefault가 불가 — 네이티브 리스너로 등록해
+ * 브라우저 뒤로가기 스와이프를 막는다. 수직 스크롤은 그대로 통과.
+ */
+function useWheelSlide(ref: RefObject<HTMLElement | null>, step: (dir: 1 | -1) => void) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let acc = 0
+    let locked = false
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return
+      e.preventDefault()
+      if (locked) return
+      acc += e.deltaX
+      if (Math.abs(acc) > 60) {
+        step(acc > 0 ? 1 : -1)
+        acc = 0
+        locked = true
+        window.setTimeout(() => {
+          locked = false
+          acc = 0
+        }, 550)
+      }
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [ref, step])
+}
+
+/**
+ * 핵심 기능 슬라이드 쇼케이스.
+ * 드래그(스와이프)로 넘기는 캐러셀 — 박스 없이 고스트 넘버 + 기울어진 미디어 +
+ * 프로젝트 액센트 블롭으로 구성한 자유 레이아웃.
+ */
+function FeatureShowcase({ features, accent }: { features: Feature[]; accent: string }) {
+  const [idx, setIdx] = useState(0)
+  const go = (n: number) => setIdx(Math.min(features.length - 1, Math.max(0, n)))
+
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const step = useCallback(
+    (dir: 1 | -1) => setIdx((i) => Math.min(features.length - 1, Math.max(0, i + dir))),
+    [features.length],
+  )
+  useWheelSlide(wrapRef, step)
+  const isTouch = useIsTouch()
+
+  return (
+    <div ref={wrapRef} className="relative mt-6 sm:mt-8">
+      {/* 트랙 내부 버튼 포커스 시 브라우저가 overflow-hidden 컨테이너를 임의로
+          스크롤(scroll-into-view)해 슬라이드가 어긋나는 것을 방지 */}
+      <div
+        className="overflow-hidden"
+        onScroll={(e) => {
+          e.currentTarget.scrollLeft = 0
+        }}
+      >
+        <motion.div
+          className={`flex touch-pan-y select-none ${isTouch ? 'cursor-grab active:cursor-grabbing' : ''}`}
+          {...(isTouch
+            ? {
+                drag: 'x' as const,
+                dragConstraints: { left: 0, right: 0 },
+                dragElastic: 0.12,
+                onDragEnd: (_: unknown, info: PanInfo) => {
+                  if (info.offset.x < -70 || info.velocity.x < -400) go(idx + 1)
+                  else if (info.offset.x > 70 || info.velocity.x > 400) go(idx - 1)
+                },
+              }
+            : {})}
+          animate={{ x: `${-idx * 100}%` }}
+          transition={{ type: 'spring', stiffness: 260, damping: 34 }}
+        >
+          {features.map((f, i) => (
+            <div key={i} className="w-full shrink-0 px-1" aria-hidden={i !== idx}>
+              <div className="grid items-center gap-8 py-8 lg:grid-cols-[0.42fr_0.58fr] lg:gap-16">
+                <div className="order-2 min-w-0 lg:order-1">
+                  <span className="block select-none text-[76px] font-extralight leading-none tracking-tighter text-black/[0.07] sm:text-[110px]">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <h3 className="-mt-5 text-2xl font-medium tracking-tight sm:-mt-7 sm:text-3xl">
+                    {f.title}
+                  </h3>
+                  <p className="mt-4 max-w-md leading-relaxed text-gray-600">{f.desc}</p>
+                </div>
+
+                <div className="relative order-1 min-w-0 lg:order-2">
+                  <div
+                    aria-hidden="true"
+                    className={`absolute inset-4 rounded-full bg-gradient-to-br ${accent} opacity-30 blur-3xl`}
+                  />
+                  <div
+                    className={`[filter:drop-shadow(0_20px_36px_rgba(0,0,0,0.16))] transition-transform duration-500 lg:flex lg:h-[440px] lg:items-center lg:justify-center [&_img]:pointer-events-none [&_video]:pointer-events-none ${
+                      i % 2 === 1 ? 'lg:-rotate-1' : 'lg:rotate-1'
+                    }`}
+                  >
+                    <FeatureMedia media={f.media} order="" stage />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* 컨트롤 — 세그먼트 + 카운터 + 화살표 */}
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            {features.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => go(i)}
+                aria-label={`${i + 1}번 기능 보기`}
+                className={`h-1 rounded-full transition-all duration-300 ${
+                  i === idx ? 'w-8 bg-black' : 'w-3 bg-black/15 hover:bg-black/40'
+                }`}
+              />
+            ))}
+          </div>
+          <span className="text-xs tabular-nums tracking-widest text-gray-400">
+            {String(idx + 1).padStart(2, '0')} / {String(features.length).padStart(2, '0')}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="mr-1 hidden items-center gap-1.5 text-[10px] font-medium tracking-[0.25em] text-gray-500 sm:inline-flex">
+            <ChevronLeft className="h-3 w-3" aria-hidden="true" />
+            SWIPE
+            <ChevronRight className="h-3 w-3" aria-hidden="true" />
+          </span>
+          <button
+            onClick={() => go(idx - 1)}
+            disabled={idx === 0}
+            aria-label="이전 기능"
+            className="rounded-full border border-black/15 p-2 text-gray-600 transition-colors hover:border-black disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => go(idx + 1)}
+            disabled={idx === features.length - 1}
+            aria-label="다음 기능"
+            className="rounded-full border border-black/15 p-2 text-gray-600 transition-colors hover:border-black disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function ProjectDetail() {
@@ -124,6 +352,16 @@ export default function ProjectDetail() {
   const project = projects.find((p) => p.id === id)
   const content = id ? projectContent[id] : undefined
   const [tIdx, setTIdx] = useState(0)
+
+  // 트러블슈팅 — 컴포넌트 위 가로 스와이프만으로 넘김 (훅은 early return 이전에 호출)
+  const isTouch = useIsTouch()
+  const tsRef = useRef<HTMLElement>(null)
+  const tsLen = content?.troubleshooting.length ?? 0
+  const tsStep = useCallback(
+    (dir: 1 | -1) => setTIdx((i) => Math.min(tsLen - 1, Math.max(0, i + dir))),
+    [tsLen],
+  )
+  useWheelSlide(tsRef, tsStep)
 
   if (!project || !content) {
     return (
@@ -211,36 +449,18 @@ export default function ProjectDetail() {
           </p>
         </section>
 
-        {/* 핵심 기능 — 하나씩, 이미지와 함께 */}
+        {/* 핵심 기능 — 목록 + 미디어 스테이지 쇼케이스 */}
         <section id="features" className="scroll-mt-24 border-t border-black/10 py-14">
           <SectionHeading eyebrow="FEATURES" title="핵심 기능" />
-          <div className="mt-10 space-y-12">
-            {content.features.map((f, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-60px' }}
-                transition={{ duration: 0.5 }}
-                className="grid items-center gap-6 sm:grid-cols-2 sm:gap-10"
-              >
-                <FeatureMedia media={f.media} order={i % 2 === 1 ? 'sm:order-2' : ''} />
-                <div className={i % 2 === 1 ? 'sm:order-1' : ''}>
-                  <span className="text-sm text-gray-300">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <h3 className="mt-1 text-xl font-medium tracking-tight">
-                    {f.title}
-                  </h3>
-                  <p className="mt-3 leading-relaxed text-gray-600">{f.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          <FeatureShowcase features={content.features} accent={project.accent} />
         </section>
 
         {/* 트러블슈팅 — 가로 배치 + 수동 슬라이드 */}
-        <section id="troubleshooting" className="scroll-mt-24 border-t border-black/10 py-14">
+        <section
+          id="troubleshooting"
+          ref={tsRef}
+          className="scroll-mt-24 border-t border-black/10 py-14"
+        >
           <div className="flex items-end justify-between gap-4">
             <SectionHeading eyebrow="TROUBLESHOOTING" title="기술적 문제 해결" />
             <div className="flex items-center gap-3">
@@ -271,7 +491,22 @@ export default function ProjectDetail() {
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.35, ease: 'easeOut' }}
-            className="mt-8 rounded-3xl border border-black/10 bg-white p-6 sm:p-10"
+            {...(isTouch
+              ? {
+                  drag: 'x' as const,
+                  dragConstraints: { left: 0, right: 0 },
+                  dragElastic: 0.1,
+                  onDragEnd: (_: unknown, info: PanInfo) => {
+                    if (info.offset.x < -70 || info.velocity.x < -400)
+                      setTIdx((i) => Math.min(ts.length - 1, i + 1))
+                    else if (info.offset.x > 70 || info.velocity.x > 400)
+                      setTIdx((i) => Math.max(0, i - 1))
+                  },
+                }
+              : {})}
+            className={`mt-8 touch-pan-y rounded-3xl border border-black/10 bg-white p-6 sm:p-10 ${
+              isTouch ? 'cursor-grab active:cursor-grabbing' : ''
+            }`}
           >
             <h3 className="text-lg font-medium tracking-tight sm:text-xl">
               {cur.title}
