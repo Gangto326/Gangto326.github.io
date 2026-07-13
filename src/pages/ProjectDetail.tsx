@@ -30,7 +30,7 @@ const projectNav = [
   { id: 'features', label: '기능' },
   { id: 'troubleshooting', label: '문제해결' },
   { id: 'retrospective', label: '회고' },
-  { id: 'demo', label: '데모' },
+  { id: 'demo', label: '인터랙션' },
 ]
 
 function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) {
