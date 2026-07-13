@@ -5,6 +5,8 @@ import { GithubIcon } from '@/components/icons/GithubIcon'
 import { Container } from '@/components/Container'
 import { projects } from '@/data/projects'
 
+const BASE = import.meta.env.BASE_URL
+
 export function Projects() {
   return (
     <section id="projects" className="scroll-mt-20 bg-white py-24 sm:py-32">
@@ -29,7 +31,7 @@ export function Projects() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-80px' }}
               transition={{ duration: 0.5, delay: i * 0.05 }}
-              className="group relative flex flex-col overflow-hidden rounded-3xl border border-black/10 bg-[#f8f8f8] p-8 transition-all duration-300 hover:-translate-y-1 hover:border-black/30 hover:shadow-xl hover:shadow-black/5"
+              className="group relative flex flex-col overflow-hidden rounded-3xl border border-black/10 bg-[#f8f8f8] transition-all duration-300 hover:-translate-y-1 hover:border-black/30 hover:shadow-xl hover:shadow-black/5"
             >
               {/* 카드 전체 클릭 영역 (stretched link) */}
               <Link
@@ -38,61 +40,69 @@ export function Projects() {
                 className="absolute inset-0 z-10 rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
               />
 
-              {/* 호버 시 나타나는 액센트 블롭 */}
-              <div
-                className={`pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-gradient-to-br ${p.accent} opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-70`}
-                aria-hidden="true"
-              />
+              {/* 대표 이미지 배너 (없으면 accent 그라디언트 폴백) */}
+              <div className="relative aspect-[2/1] overflow-hidden border-b border-black/5 bg-white">
+                {p.thumb ? (
+                  <img
+                    src={BASE + p.thumb}
+                    alt={p.name}
+                    loading="lazy"
+                    className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.04]"
+                  />
+                ) : (
+                  <div className={`h-full w-full bg-gradient-to-br ${p.accent}`} aria-hidden="true" />
+                )}
+              </div>
 
-              <div className="relative flex items-center justify-between">
-                <span className="text-sm text-gray-400">{p.index}</span>
-                <div className="flex items-center gap-3">
-                  {p.github && (
-                    <a
-                      href={p.github}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      aria-label={`${p.name} GitHub 저장소`}
-                      className="relative z-20 text-gray-400 transition-colors hover:text-black"
-                    >
-                      <GithubIcon className="h-5 w-5" />
-                    </a>
-                  )}
-                  <ArrowUpRight className="h-5 w-5 text-gray-400 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" />
+              {/* 콘텐츠 */}
+              <div className="relative flex flex-1 flex-col p-8">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="text-sm text-gray-400">{p.index}</span>
+                    <h3 className="mt-2 text-2xl font-medium tracking-tight">{p.name}</h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {p.nameKo} · {p.tagline}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3 pt-1">
+                    {p.github && (
+                      <a
+                        href={p.github}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`${p.name} GitHub 저장소`}
+                        className="relative z-20 text-gray-400 transition-colors hover:text-black"
+                      >
+                        <GithubIcon className="h-5 w-5" />
+                      </a>
+                    )}
+                    <ArrowUpRight className="h-5 w-5 text-gray-400 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-black" />
+                  </div>
                 </div>
-              </div>
 
-              <div className="relative mt-8">
-                <h3 className="text-2xl font-medium tracking-tight">{p.name}</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  {p.nameKo} · {p.tagline}
-                </p>
-              </div>
+                <p className="mt-5 text-sm leading-relaxed text-gray-600">{p.highlight}</p>
 
-              <p className="relative mt-5 text-sm leading-relaxed text-gray-600">
-                {p.highlight}
-              </p>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {p.stack.map((s) => (
+                    <span
+                      key={s}
+                      className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs text-gray-600"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
 
-              <div className="relative mt-6 flex flex-wrap gap-2">
-                {p.stack.map((s) => (
-                  <span
-                    key={s}
-                    className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs text-gray-600"
-                  >
-                    {s}
+                <div className="mt-auto flex items-center justify-between border-t border-black/5 pt-6">
+                  <span className="text-xs tracking-wide text-gray-500">
+                    {p.role} · {p.meta}
                   </span>
-                ))}
-              </div>
-
-              <div className="relative mt-8 flex items-center justify-between border-t border-black/5 pt-5">
-                <span className="text-xs tracking-wide text-gray-500">
-                  {p.role} · {p.meta}
-                </span>
-                <span className="flex items-center gap-1 text-xs font-medium tracking-wide text-black">
-                  체험하기
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
-                </span>
+                  <span className="flex items-center gap-1 text-xs font-medium tracking-wide text-black">
+                    체험하기
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                  </span>
+                </div>
               </div>
             </motion.div>
           ))}

@@ -13,6 +13,8 @@ export interface Project {
   github?: string
   /** Tailwind 그라디언트 클래스 (블롭/액센트용) */
   accent: string
+  /** 대표 이미지 (BASE_URL 기준 상대 경로). 카드 배너·상세 히어로에 사용. 없으면 accent 그라디언트 폴백. */
+  thumb?: string
 }
 
 export const projects: Project[] = [
@@ -28,6 +30,7 @@ export const projects: Project[] = [
     highlight: '다중 AI 실시간 파이프라인 · 깊이 기반 미학습 장애물 감지',
     experience: 'AI 파이프라인 시뮬레이터',
     accent: 'from-violet-400 via-fuchsia-300 to-pink-200',
+    thumb: 'assets/ojo/hero.jpg',
   },
   {
     id: 'lidar',

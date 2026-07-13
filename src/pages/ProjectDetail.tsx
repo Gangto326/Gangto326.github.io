@@ -177,6 +177,13 @@ export default function ProjectDetail() {
           </div>
         </header>
 
+        {/* 대표 이미지 히어로 */}
+        {project.thumb && (
+          <div className="mt-10 overflow-hidden rounded-3xl border border-black/10 bg-white">
+            <img src={import.meta.env.BASE_URL + project.thumb} alt={`${project.name} 대표 이미지`} className="block w-full object-contain" />
+          </div>
+        )}
+
         {/* 개요 */}
         <section className="py-14">
           <SectionHeading eyebrow="OVERVIEW" title="프로젝트 개요" />
