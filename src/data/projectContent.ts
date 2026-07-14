@@ -43,13 +43,13 @@ export const projectContent: Record<string, ProjectContent> = {
           kind: 'sequence',
           ratio: '806 / 724',
           srcs: [
-            'assets/ojo/obstacle-1.jpg',
-            'assets/ojo/obstacle-2.jpg',
-            'assets/ojo/obstacle-3.jpg',
-            'assets/ojo/obstacle-4.jpg',
-            'assets/ojo/obstacle-5.jpg',
-            'assets/ojo/obstacle-6.jpg',
-            'assets/ojo/obstacle-7.jpg',
+            'assets/ojo/obstacle-1.webp',
+            'assets/ojo/obstacle-2.webp',
+            'assets/ojo/obstacle-3.webp',
+            'assets/ojo/obstacle-4.webp',
+            'assets/ojo/obstacle-5.webp',
+            'assets/ojo/obstacle-6.webp',
+            'assets/ojo/obstacle-7.webp',
           ],
         },
       },
@@ -61,17 +61,17 @@ export const projectContent: Record<string, ProjectContent> = {
       {
         title: '버스 번호 인식',
         desc: '정류장 체류를 감지하면 제스처 이전에 선제적으로 번호판을 읽어 즉시 안내합니다.',
-        media: { kind: 'image', src: 'assets/ojo/bus-number.jpg' },
+        media: { kind: 'image', src: 'assets/ojo/bus-number.webp' },
       },
       {
         title: '손 제스처 물체 인식',
         desc: '물체를 쥐면 Vision LLM이 식별해 음성으로 알려줍니다.',
-        media: { kind: 'image', src: 'assets/ojo/hand-gesture.jpg' },
+        media: { kind: 'image', src: 'assets/ojo/hand-gesture.webp' },
       },
       {
         title: '낙상 감지',
         desc: 'Galaxy Watch 센서로 실시간 낙상을 판별하고 긴급 알림을 보냅니다.',
-        media: { kind: 'image', src: 'assets/ojo/fall-detection.jpg' },
+        media: { kind: 'image', src: 'assets/ojo/fall-detection.webp' },
       },
     ],
     troubleshooting: [
@@ -126,17 +126,17 @@ export const projectContent: Record<string, ProjectContent> = {
       {
         title: '구역별 통계 집계',
         desc: '센서 원천 데이터를 셀·구역 단위 통계로 가공해 제공합니다.',
-        media: { kind: 'image', src: 'assets/lidar/zone-stats.jpg' },
+        media: { kind: 'image', src: 'assets/lidar/zone-stats.webp' },
       },
       {
         title: '미세먼지 히트맵',
         desc: 'PM 농도를 위성 지도 위 히트맵으로 시각화합니다.',
-        media: { kind: 'image', src: 'assets/lidar/heatmap.jpg' },
+        media: { kind: 'image', src: 'assets/lidar/heatmap.webp' },
       },
       {
         title: '임계값 초과 알림',
         desc: '설정 임계값을 넘은 구역의 작업자에게 알림을 발송합니다.',
-        media: { kind: 'image', src: 'assets/lidar/alert.jpg' },
+        media: { kind: 'image', src: 'assets/lidar/alert.webp' },
       },
     ],
     troubleshooting: [
@@ -182,22 +182,22 @@ export const projectContent: Record<string, ProjectContent> = {
       {
         title: '위험 객체 접근 감지',
         desc: '차량·건설 자재·하행 계단 3종의 접근을 실시간 감지합니다.',
-        media: { kind: 'image', src: 'assets/smartcap/object-approach.jpg' },
+        media: { kind: 'image', src: 'assets/smartcap/object-approach.webp' },
       },
       {
         title: '센서리스 낙상 감지',
         desc: 'IMU 없이 영상만으로 급격한 머리 움직임을 판별합니다.',
-        media: { kind: 'sequence', ratio: '1200 / 657', srcs: ['assets/smartcap/fall-1.jpg', 'assets/smartcap/fall-2.jpg'] },
+        media: { kind: 'sequence', ratio: '1200 / 657', srcs: ['assets/smartcap/fall-1.webp', 'assets/smartcap/fall-2.webp'] },
       },
       {
         title: '자동 수평 보정',
         desc: '사용자 행동 패턴을 기반으로 스스로 영점을 조절합니다.',
-        media: { kind: 'sequence', ratio: '1200 / 642', srcs: ['assets/smartcap/level-1.jpg', 'assets/smartcap/level-2.jpg'] },
+        media: { kind: 'sequence', ratio: '1200 / 642', srcs: ['assets/smartcap/level-1.webp', 'assets/smartcap/level-2.webp'] },
       },
       {
         title: '실시간 모니터링 대시보드',
         desc: '사고 추세·유형별 현황·위험 순위를 실시간 표시합니다.',
-        media: { kind: 'image', src: 'assets/smartcap/dashboard.jpg' },
+        media: { kind: 'image', src: 'assets/smartcap/dashboard.webp' },
       },
     ],
     troubleshooting: [
@@ -248,12 +248,12 @@ export const projectContent: Record<string, ProjectContent> = {
       {
         title: 'AI 요약 · 키워드',
         desc: '콘텐츠를 요약하고 키워드를 추출해 하이라이팅합니다.',
-        media: { kind: 'image', src: 'assets/moda/summary.jpg' },
+        media: { kind: 'image', src: 'assets/moda/summary.webp' },
       },
       {
         title: '자동 분류 · 검색',
         desc: 'AI 자동 분류와 Elasticsearch 기반 검색을 제공합니다.',
-        media: { kind: 'montage', srcs: ['assets/moda/search.jpg', 'assets/moda/classify.jpg'] },
+        media: { kind: 'montage', srcs: ['assets/moda/search.webp', 'assets/moda/classify.webp'] },
       },
     ],
     troubleshooting: [

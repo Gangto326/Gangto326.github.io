@@ -16,7 +16,9 @@ interface Lane {
   extra?: boolean
 }
 
-const VID = `${import.meta.env.BASE_URL}assets/ojo/bus-demo.mp4`
+const VID = `${import.meta.env.BASE_URL}assets/ojo/bus-demo.mp4` // 무음(오디오 트랙 제거)
+// 알림음(차임+TTS)은 영상에서 분리 추출 — Eager에서만 deliverAt에 정확히 맞춰 재생
+const ANNOUNCE = `${import.meta.env.BASE_URL}assets/ojo/bus-announce.m4a`
 const SEQ = `${import.meta.env.BASE_URL}assets/ojo/sequence.webp`
 const BUS_NO = '360'
 
@@ -61,6 +63,8 @@ export function BusEagerDemo() {
   const [duration, setDuration] = useState(6.84)
   const [muted, setMuted] = useState(true)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const prevTRef = useRef(0)
   const topRef = useRef<HTMLDivElement>(null)
 
   const scale = mode === 'eager' ? SCALE_E : SCALE_L
@@ -78,6 +82,41 @@ export function BusEagerDemo() {
   const delivered = t >= deliverAt
 
   const scrollTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  const stopAnnounce = () => {
+    const a = audioRef.current
+    if (a && (!a.paused || a.currentTime > 0)) {
+      a.pause()
+      a.currentTime = 0
+    }
+  }
+
+  // 알림음 동기화 — Eager 재생 중 t가 deliverAt을 지나는 순간 시작, 그 이전으로 돌아가면 리셋
+  const handleTime = (v: HTMLVideoElement) => {
+    const now = v.currentTime
+    const a = audioRef.current
+    if (a) {
+      if (mode === 'eager' && !v.paused && prevTRef.current < deliverAt && now >= deliverAt) {
+        a.currentTime = Math.max(0, now - deliverAt)
+        void a.play()
+      }
+      if (now < deliverAt) stopAnnounce()
+    }
+    prevTRef.current = now
+    setT(now)
+  }
+
+  // 일시정지 후 재개·안내 구간으로 스크럽 후 재생 시 알림음을 해당 오프셋에 재동기화
+  const resyncAnnounce = () => {
+    const a = audioRef.current
+    const v = videoRef.current
+    if (!a || !v || mode !== 'eager') return
+    const offset = v.currentTime - deliverAt
+    if (offset >= 0 && offset < (a.duration || Infinity)) {
+      a.currentTime = offset
+      void a.play()
+    }
+  }
 
   const togglePlay = () => {
     const v = videoRef.current
@@ -98,16 +137,11 @@ export function BusEagerDemo() {
     }
     setT(val)
   }
-  const toggleMute = () => {
-    const v = videoRef.current
-    if (v) {
-      v.muted = !v.muted
-      setMuted(v.muted)
-    }
-  }
+  const toggleMute = () => setMuted((m) => !m)
   const selectMode = (m: Mode) => {
     setMode(m)
     setView('demo')
+    stopAnnounce() // Lazy에선 알림음이 존재하지 않는다
     scrollTop()
   }
   const toggleView = () => {
@@ -174,16 +208,23 @@ export function BusEagerDemo() {
             <video
               ref={videoRef}
               src={VID}
-              muted={muted}
+              muted
               playsInline
               preload="metadata"
               className="h-[240px] w-full object-cover object-bottom sm:h-[300px]"
               onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 6.84)}
-              onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
-              onPlay={() => setPlaying(true)}
-              onPause={() => setPlaying(false)}
+              onTimeUpdate={(e) => handleTime(e.currentTarget)}
+              onPlay={() => {
+                setPlaying(true)
+                resyncAnnounce()
+              }}
+              onPause={() => {
+                setPlaying(false)
+                audioRef.current?.pause()
+              }}
               onEnded={() => setPlaying(false)}
             />
+            <audio ref={audioRef} src={ANNOUNCE} preload="auto" muted={muted} />
             <div className="absolute left-3 top-3 flex items-center gap-2">
               <span className="rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
                 실제 시연 · 160° 광각 YOLO
@@ -216,13 +257,16 @@ export function BusEagerDemo() {
                 🔊 음성 알림
               </motion.span>
             )}
-            <button
-              onClick={toggleMute}
-              aria-label={muted ? '소리 켜기' : '소리 끄기'}
-              className="absolute bottom-3 right-3 rounded-full bg-black/60 p-2 text-white backdrop-blur transition-colors hover:bg-black/80"
-            >
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </button>
+            {/* 알림음 토글 — Lazy는 안내가 도착하지 않아 알림음 자체가 없으므로 Eager에서만 */}
+            {mode === 'eager' && (
+              <button
+                onClick={toggleMute}
+                aria-label={muted ? '알림음 켜기' : '알림음 끄기'}
+                className="absolute bottom-3 right-3 rounded-full bg-black/60 p-2 text-white backdrop-blur transition-colors hover:bg-black/80"
+              >
+                {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              </button>
+            )}
           </div>
 
           {/* 컨트롤 */}

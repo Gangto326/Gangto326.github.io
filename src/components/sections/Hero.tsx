@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { profile } from '@/data/profile'
 import { scrollToId } from '@/lib/scroll'
 
-const PROFILE_SRC = `${import.meta.env.BASE_URL}assets/profile.jpg`
+const PROFILE_SRC = `${import.meta.env.BASE_URL}assets/profile.webp`
 
 const stats = [
   { value: '4', label: 'PROJECTS' },
