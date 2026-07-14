@@ -25,7 +25,10 @@ export function ExperienceShell({
   children,
 }: ExperienceShellProps) {
   return (
-    <div className="surface-card rounded-lg border border-black/10 bg-white p-6 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-card dark:text-neutral-100 sm:p-8">
+    <div
+      data-experience-card
+      className="surface-card rounded-lg border border-black/10 bg-white p-6 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-card dark:text-neutral-100 sm:p-8"
+    >
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs tracking-widest text-gray-400">EXPERIENCE</p>

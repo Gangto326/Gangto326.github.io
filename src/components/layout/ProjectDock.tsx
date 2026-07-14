@@ -4,6 +4,44 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { projects } from '@/data/projects'
 
 const BASE = import.meta.env.BASE_URL
+const DOCK_GAP = 20 // 시각적 뷰포트 하단에서 독까지의 여백(시각 px)
+
+/**
+ * 시각적 뷰포트(핀치 줌) 상태 — 독을 줌과 무관하게 화면 하단 중앙·고정 크기로
+ * 유지하기 위한 앵커(하단 중앙 좌표)와 역보정 배율을 제공한다.
+ */
+function useVisualAnchor() {
+  const [a, setA] = useState(() => ({
+    scale: 1,
+    left: typeof window !== 'undefined' ? window.innerWidth / 2 : 0,
+    top: typeof window !== 'undefined' ? window.innerHeight - DOCK_GAP : 0,
+  }))
+  useEffect(() => {
+    const vv = window.visualViewport
+    const update = () => {
+      const next = vv
+        ? {
+            scale: vv.scale || 1,
+            left: vv.offsetLeft + vv.width / 2,
+            top: vv.offsetTop + vv.height - DOCK_GAP / (vv.scale || 1),
+          }
+        : { scale: 1, left: window.innerWidth / 2, top: window.innerHeight - DOCK_GAP }
+      setA((prev) =>
+        prev.scale === next.scale && prev.left === next.left && prev.top === next.top ? prev : next,
+      )
+    }
+    update()
+    vv?.addEventListener('resize', update)
+    vv?.addEventListener('scroll', update)
+    window.addEventListener('resize', update)
+    return () => {
+      vv?.removeEventListener('resize', update)
+      vv?.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+  return a
+}
 
 /**
  * 하단 중앙 프로젝트 독 — 프로젝트 상세 페이지 전용.
@@ -96,14 +134,17 @@ export function ProjectDock({ currentId }: { currentId: string }) {
   // 그 탭의 click은 내비게이션 대신 확장만 하도록 막는다.
   const tapExpandRef = useRef(false)
 
+  // 핀치 줌 역보정 — 앵커는 시각적 뷰포트 하단 중앙, 크기는 scale(1/줌배율)로 상쇄
+  const anchor = useVisualAnchor()
+
   return (
     <motion.div
       ref={rootRef}
-      style={{ x: '-50%' }}
+      style={{ left: anchor.left, top: anchor.top }}
       initial={{ y: 110 }}
       animate={{ y: hidden && !pinned ? 110 : 0 }}
       transition={{ duration: 0.28, ease: 'easeInOut' }}
-      className="fixed bottom-5 left-1/2 z-40 hidden md:block"
+      className="fixed z-40 hidden md:block"
       onPointerDownCapture={(e) => {
         tapExpandRef.current = e.pointerType !== 'mouse' && !isExpanded
       }}
@@ -114,6 +155,13 @@ export function ProjectDock({ currentId }: { currentId: string }) {
         if (!rootRef.current?.contains(e.relatedTarget as Node)) collapse()
       }}
     >
+      <div
+        style={{
+          // 하단 중앙 앵커에 독의 하단 중앙을 맞추고, 줌 배율을 역으로 상쇄해 시각 크기 고정
+          transform: `translate(-50%, -100%) scale(${1 / anchor.scale})`,
+          transformOrigin: '50% 100%',
+        }}
+      >
       <nav
         aria-label="프로젝트 바로가기"
         className={`surface-card flex items-end gap-2 rounded-full border border-border bg-background/80 shadow-lg backdrop-blur transition-[padding] duration-200 ${
@@ -227,6 +275,7 @@ export function ProjectDock({ currentId }: { currentId: string }) {
           })}
         </ul>
       </nav>
+      </div>
     </motion.div>
   )
 }

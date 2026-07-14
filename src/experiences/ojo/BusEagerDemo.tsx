@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check, Loader2, Network, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
+import { scrollDemoIntoView } from '@/lib/scroll'
 
 type Mode = 'lazy' | 'eager'
 type View = 'demo' | 'diagram'
@@ -81,7 +82,7 @@ export function BusEagerDemo() {
   const detected = t >= yoloEnd
   const delivered = t >= deliverAt
 
-  const scrollTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const scrollTop = () => scrollDemoIntoView(topRef.current)
 
   const stopAnnounce = () => {
     const a = audioRef.current
@@ -160,7 +161,7 @@ export function BusEagerDemo() {
       ]}
     >
       {/* 모드 선택 + 뷰 전환 · 재생/버튼 클릭 시 이 지점이 상단으로 */}
-      <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-wrap items-center gap-2">
+      <div ref={topRef} className="mb-5 flex flex-wrap items-center gap-2">
         {(
           [
             { k: 'lazy', label: 'Lazy 방식 (기존)' },

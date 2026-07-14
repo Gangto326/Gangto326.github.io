@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
 import { Car, Cylinder, RotateCcw, StepForward } from 'lucide-react'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
+import { scrollDemoIntoView } from '@/lib/scroll'
 import {
   CAM,
   IMG_H,
@@ -88,8 +89,12 @@ const INIT: Machine = {
   stairs: { s: 'SAFE', pending: 'SAFE', cnt: 0 },
 }
 // 목표 등급으로 한 칸 이동(N_FRAMES 히스테리시스). pending = 다음 후보 등급.
+// 변화가 없으면 기존 객체를 그대로 반환(참조 유지) — 유휴 시 불필요한 리렌더를 막는다.
 function stepLevel(o: OState, target: Sev): OState {
-  if (target === o.s) return { s: o.s, pending: o.s, cnt: 0 }
+  if (target === o.s) {
+    if (o.pending === o.s && o.cnt === 0) return o
+    return { s: o.s, pending: o.s, cnt: 0 }
+  }
   const dir = ORDER[target] > ORDER[o.s] ? 1 : -1
   const next = LEVELS[ORDER[o.s] + dir]
   if (next === o.pending) {
@@ -122,10 +127,10 @@ export function SmartcapMetricDemo() {
   const [active, setActive] = useState<ObjKey>('vehicle')
   const [machine, setMachine] = useState<Machine>(INIT)
   const topRef = useRef<HTMLDivElement>(null)
-  // 탭 클릭 시 데모 상단으로 스크롤해 3D 뷰·판정이 한 화면에 보이게 한다
+  // 탭 클릭 시 데모가 가장 잘 보이는 위치(담기면 중앙·아니면 상단)로 스크롤
   const selectObject = (k: ObjKey) => {
     setActive(k)
-    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    scrollDemoIntoView(topRef.current)
   }
 
   const [vApp, setVApp] = useState(0)
@@ -153,16 +158,19 @@ export function SmartcapMetricDemo() {
       const k = activeRef.current
       const i = inRef.current
       setMachine((prev) => {
+        let next: OState
         if (k === 'vehicle') {
           const inc = (measureVehicle(i.vApp).h - VEH_BASE_H) / VEH_BASE_H
-          return { ...prev, vehicle: stepLevel(prev.vehicle, vehTarget(inc)) }
-        }
-        if (k === 'material') {
+          next = stepLevel(prev.vehicle, vehTarget(inc))
+        } else if (k === 'material') {
           const ratio = measureMaterial(i.mApp, i.mRot).short / MAT_BASE_SHORT
-          return { ...prev, material: stepLevel(prev.material, matTarget(ratio)) }
+          next = stepLevel(prev.material, matTarget(ratio))
+        } else {
+          const st = measureStairs(i.sPitch, i.sApp)
+          next = stepLevel(prev.stairs, stairTarget(st.desc, st.cy))
         }
-        const st = measureStairs(i.sPitch, i.sApp)
-        return { ...prev, stairs: stepLevel(prev.stairs, stairTarget(st.desc, st.cy)) }
+        // 변화 없으면 prev 반환 → React가 리렌더를 건너뛴다
+        return next === prev[k] ? prev : { ...prev, [k]: next }
       })
     }, 120)
     return () => clearInterval(id)
@@ -197,7 +205,7 @@ export function SmartcapMetricDemo() {
       ]}
     >
       {/* 객체 탭 · 클릭 시 이 지점이 상단으로. 리셋은 같은 줄 우측 끝 */}
-      <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-wrap items-center gap-2">
+      <div ref={topRef} className="mb-5 flex flex-wrap items-center gap-2">
         {OBJECTS.map(({ k, label, Icon }) => {
           const on = active === k
           const sev = machine[k].s
@@ -235,7 +243,9 @@ export function SmartcapMetricDemo() {
           >
             <Canvas
               key={active}
-              dpr={[1, 2]}
+              // demand: 슬라이더 등 React 트리 변화가 있을 때만 렌더 — 유휴·스크롤 중 GPU 부하 제거
+              frameloop="demand"
+              dpr={[1, 1.5]}
               gl={{ antialias: true, alpha: true }}
               camera={{ fov: cam.fov, position: cam.position, near: 0.1, far: 50000 }}
               onCreated={({ camera }) => {
