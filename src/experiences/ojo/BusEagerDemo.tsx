@@ -200,6 +200,8 @@ export function BusEagerDemo() {
             src={SEQ}
             alt="버스 번호 인식 Pre-fetching 시퀀스 다이어그램"
             className="block h-auto w-full"
+            // 로드 전에도 카드 높이가 정확하도록 원본 비율 예약 — 뷰 전환 스크롤 목표가 처음부터 맞는다
+            style={{ aspectRatio: '1600 / 1343' }}
           />
         </div>
       ) : (
