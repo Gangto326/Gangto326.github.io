@@ -98,14 +98,6 @@ export function BusEagerDemo() {
     }
     setT(val)
   }
-  const reset = () => {
-    const v = videoRef.current
-    if (v) {
-      v.pause()
-      v.currentTime = 0
-    }
-    setT(0)
-  }
   const toggleMute = () => {
     const v = videoRef.current
     if (v) {
@@ -127,8 +119,11 @@ export function BusEagerDemo() {
     <ExperienceShell
       title="버스 번호 인식 — Eager Evaluation"
       subtitle="실제 시연 영상을 재생하거나 스크럽하며, 각 처리가 어느 순간 트리거되어 준비되는지 확인해 보세요."
-      hint="영상과 타임라인은 1:1로 동기화됩니다(영상 속 제스처 3.1s = 아래 플로우의 제스처). Lazy는 '선제 처리가 없었다면'의 비교로, GPS·노선캐싱·교차검증 없이 제스처 이후 YOLO→OCR→TTS 생성→재생을 순차 실행합니다. 처리 소요는 개념 이해를 위한 예시값입니다."
-      onReset={reset}
+      hint={[
+        '영상과 타임라인은 1:1 동기화 — 영상 속 제스처(3.1s)가 아래 플로우의 제스처 시점입니다.',
+        "Lazy는 '선제 처리가 없었다면'의 비교 — 제스처 후에야 YOLO→OCR→TTS를 순차 실행합니다.",
+        '처리 소요 시간은 개념 이해를 위한 예시값입니다.',
+      ]}
     >
       {/* 모드 선택 + 뷰 전환 · 재생/버튼 클릭 시 이 지점이 상단으로 */}
       <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-wrap items-center gap-2">

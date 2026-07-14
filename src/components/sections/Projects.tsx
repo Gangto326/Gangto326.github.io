@@ -10,20 +10,15 @@ const BASE = import.meta.env.BASE_URL
 
 export function Projects() {
   return (
-    <section id="projects" className="relative scroll-mt-20 overflow-hidden border-t border-border bg-background py-24 sm:py-32">
-      {/* 다크에서 상단을 은은히 밝히는 청녹 글로우 */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 hidden dark:block dark:[background:radial-gradient(ellipse_60%_30%_at_50%_0%,hsl(var(--glow)/0.07),transparent_70%)]"
-      />
+    <section id="projects" className="hairline-t relative scroll-mt-20 overflow-hidden bg-background py-24 sm:py-32">
       <Container className="relative">
         <div className="mb-14 flex items-end justify-between">
           <div>
             <p className="mb-3 flex items-center gap-3 text-xs font-medium tracking-widest text-muted-foreground">
-              <span className="h-px w-8 bg-foreground/30" aria-hidden="true" />
+              <span className="h-px w-8 bg-foreground/30 dark:bg-glow/60" aria-hidden="true" />
               SELECTED WORK
             </p>
-            <h2 className="text-4xl font-semibold tracking-tighter sm:text-5xl">
+            <h2 className="heading-sheen text-4xl font-semibold tracking-tighter sm:text-5xl">
               PROJECTS
             </h2>
           </div>
@@ -42,7 +37,7 @@ export function Projects() {
               transition={{ duration: 0.5, delay: i * 0.05, ease: 'easeOut' }}
               className="flex"
             >
-              <Card className="group relative flex flex-1 flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-foreground/30 hover:shadow-md">
+              <Card className="group relative flex flex-1 flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-foreground/30 hover:shadow-md dark:hover:border-[hsl(var(--glow)/0.4)] dark:hover:shadow-[0_0_48px_-12px_hsl(var(--glow)/0.35)]">
                 {/* hover 시 프로젝트 액센트 헤어라인 */}
                 <span
                   aria-hidden="true"

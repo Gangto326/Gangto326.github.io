@@ -41,10 +41,10 @@ export function Hero() {
             className="order-2 lg:order-1"
           >
             <p className="mb-6 flex items-center gap-3 text-xs font-medium tracking-widest text-muted-foreground">
-              <span className="h-px w-8 bg-foreground/30" aria-hidden="true" />
+              <span className="h-px w-8 bg-foreground/30 dark:bg-glow/60" aria-hidden="true" />
               AI · BACKEND ENGINEER
             </p>
-            <h1 className="text-balance text-5xl font-semibold leading-tight tracking-tighter sm:text-6xl xl:text-7xl">
+            <h1 className="heading-sheen text-balance text-5xl font-semibold leading-tight tracking-tighter sm:text-6xl xl:text-7xl">
               사용자{' '}
               <span className="bg-gradient-to-r from-pink-500 via-orange-400 to-amber-400 bg-clip-text text-transparent dark:from-teal-300 dark:via-cyan-300 dark:to-emerald-300">
                 경험
@@ -103,7 +103,7 @@ export function Hero() {
               <img
                 src={PROFILE_SRC}
                 alt="김강토 프로필 사진"
-                className="aspect-[4/5] w-60 rounded-lg object-cover shadow-md ring-1 ring-border sm:w-72 lg:w-80"
+                className="aspect-[4/5] w-60 rounded-lg object-cover shadow-md ring-1 ring-border dark:shadow-[0_0_60px_-12px_hsl(var(--glow)/0.35),0_8px_28px_-8px_hsl(210_30%_2%/0.9)] sm:w-72 lg:w-80"
               />
               <div className="mt-4 flex items-center justify-end gap-2">
                 <span className="text-sm font-medium">김강토 · GANGTO</span>

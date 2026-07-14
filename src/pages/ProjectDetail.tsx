@@ -14,6 +14,7 @@ import { GithubIcon } from '@/components/icons/GithubIcon'
 import { Container } from '@/components/Container'
 import { Navbar } from '@/components/layout/Navbar'
 import { FloatingNav } from '@/components/layout/FloatingNav'
+import { ProjectDock } from '@/components/layout/ProjectDock'
 import { Footer } from '@/components/layout/Footer'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -51,7 +52,7 @@ function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) 
   return (
     <div>
       <p className="mb-2 text-xs font-medium tracking-widest text-muted-foreground">{eyebrow}</p>
-      <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h2>
+      <h2 className="heading-sheen text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h2>
     </div>
   )
 }
@@ -368,6 +369,9 @@ export default function ProjectDetail() {
   const content = id ? projectContent[id] : undefined
   const [tIdx, setTIdx] = useState(0)
 
+  // 프로젝트 전환 시 트러블슈팅 인덱스 리셋 (항목 수가 다른 프로젝트로 이동해도 안전)
+  useEffect(() => setTIdx(0), [id])
+
   // 트러블슈팅 — 컴포넌트 위 가로 스와이프만으로 넘김 (훅은 early return 이전에 호출)
   const isTouch = useIsTouch()
   const tsRef = useRef<HTMLElement>(null)
@@ -404,7 +408,9 @@ export default function ProjectDetail() {
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
       <FloatingNav items={projectNav} />
-      <Container className="py-16">
+      <ProjectDock currentId={project.id} />
+      {/* key로 프로젝트 전환 시 캐러셀·트러블슈팅 인덱스 등 내부 상태를 리셋 */}
+      <Container key={project.id} className="py-16">
         <Link
           to="/"
           className="inline-flex items-center gap-2 rounded-sm text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -415,7 +421,7 @@ export default function ProjectDetail() {
         {/* 헤더 */}
         <header className="mt-8 border-b border-border pb-12">
           <span className="text-sm tabular-nums text-muted-foreground">{project.index}</span>
-          <h1 className="mt-2 text-4xl font-semibold tracking-tighter sm:text-5xl">
+          <h1 className="heading-sheen mt-2 text-4xl font-semibold tracking-tighter sm:text-5xl">
             {project.name}
           </h1>
           <p className="mt-2 text-muted-foreground">
@@ -536,7 +542,7 @@ export default function ProjectDetail() {
               isTouch ? 'cursor-grab active:cursor-grabbing' : ''
             }`}
           >
-            <h3 className="text-lg font-semibold tracking-tight sm:text-xl">
+            <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">
               {cur.title}
             </h3>
             <div className="mt-8 grid gap-6 sm:grid-cols-3 sm:gap-8">
@@ -550,7 +556,7 @@ export default function ProjectDetail() {
                     <span className={`h-1.5 w-1.5 rounded-full ${col.dot}`} aria-hidden="true" />
                     {col.k}
                   </span>
-                  <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                  <p className="mt-4 text-base leading-relaxed text-muted-foreground">
                     {emphasize(col.v)}
                   </p>
                 </div>
@@ -612,6 +618,51 @@ export default function ProjectDetail() {
               </div>
             </ExperienceShell>
           )}
+        </section>
+
+        {/* 다른 프로젝트 — 독이 없는 작은 화면(<md) 전용 스위처 */}
+        <section id="other-projects" className="scroll-mt-24 border-t border-border py-16 md:hidden">
+          <SectionHeading eyebrow="OTHER PROJECTS" title="다른 프로젝트 둘러보기" />
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {projects
+              .filter((p) => p.id !== project.id)
+              .map((p) => (
+                <Link
+                  key={p.id}
+                  to={`/project/${p.id}`}
+                  aria-label={`${p.name} — ${p.tagline}`}
+                  className="group rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  <Card className="h-full overflow-hidden transition-all duration-300 group-hover:-translate-y-1 group-hover:border-foreground/30 group-hover:shadow-md dark:group-hover:border-[hsl(var(--glow)/0.4)] dark:group-hover:shadow-[0_0_40px_-12px_hsl(var(--glow)/0.35)]">
+                    <div className="aspect-[16/9] overflow-hidden border-b border-border bg-muted/50">
+                      {p.thumb ? (
+                        <img
+                          src={`${import.meta.env.BASE_URL}${p.thumb}`}
+                          alt={p.name}
+                          loading="lazy"
+                          className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className={`h-full w-full bg-gradient-to-br ${p.accent}`} aria-hidden="true" />
+                      )}
+                    </div>
+                    <div className="flex items-start justify-between gap-3 p-4">
+                      <div>
+                        <p className="flex items-baseline gap-2">
+                          <span className="text-xs tabular-nums text-muted-foreground">{p.index}</span>
+                          <span className="text-sm font-semibold tracking-tight">{p.name}</span>
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{p.tagline}</p>
+                      </div>
+                      <ArrowUpRight
+                        className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground"
+                        aria-hidden="true"
+                      />
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+          </div>
         </section>
       </Container>
       <Footer />

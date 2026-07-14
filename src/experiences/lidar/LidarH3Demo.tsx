@@ -106,19 +106,15 @@ export function LidarH3Demo() {
     setView(v)
     scrollTop()
   }
-  const reset = () => {
-    setSlide(0)
-    setRes(10)
-    setView('interactive')
-    setFade(0)
-  }
-
   return (
     <ExperienceShell
       title="H3 격자 압축 시각화"
       subtitle="실제 라이다 데이터를 H3 육각 셀로 집계하면 저장량이 어떻게 줄어드는지, 해상도를 바꿔가며 확인해 보세요."
-      hint="화면은 실제 15분 측정 데이터(100,517행)를 다운샘플해 투영한 것으로, 색은 실측 PM10 농도(파랑=저 · 빨강=고)입니다. 아래 '실측' 셀 수·압축률은 전체 데이터를 실제 H3로 집계한 결과이며, H3 해상도는 고객사 구역 통계의 넓이에 맞춰 선정했습니다."
-      onReset={reset}
+      hint={[
+        '실제 15분 측정 데이터(100,517행)를 다운샘플해 투영 — 색은 실측 PM10 농도(파랑=저 · 빨강=고).',
+        "아래 '실측' 셀 수·압축률은 전체 데이터를 실제 H3로 집계한 결과입니다.",
+        'H3 해상도는 고객사 구역 통계의 넓이에 맞춰 선정했습니다.',
+      ]}
     >
       {/* 뷰 선택 · 클릭 시 이 지점이 상단으로 */}
       <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-wrap gap-2">

@@ -37,7 +37,7 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur">
+    <header className="hairline-b sticky top-0 z-50 bg-background/80 backdrop-blur">
       <Container className="flex items-center justify-between py-4">
         <button
           onClick={goHome}

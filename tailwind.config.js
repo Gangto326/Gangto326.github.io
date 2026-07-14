@@ -53,7 +53,7 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        glow: 'hsl(var(--glow))',
+        glow: 'hsl(var(--glow) / <alpha-value>)',
         danger: 'hsl(var(--danger))',
         info: 'hsl(var(--info))',
         success: 'hsl(var(--success))',
