@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
-import { Car, Cylinder, StepForward } from 'lucide-react'
+import { Car, Cylinder, RotateCcw, StepForward } from 'lucide-react'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
 import {
   CAM,
@@ -100,6 +100,12 @@ const M_BASE = measureMaterial(0, 0)
 export function SmartcapMetricDemo() {
   const [active, setActive] = useState<ObjKey>('vehicle')
   const [machine, setMachine] = useState<Machine>(INIT)
+  const topRef = useRef<HTMLDivElement>(null)
+  // 탭 클릭 시 데모 상단으로 스크롤해 3D 뷰·판정이 한 화면에 보이게 한다
+  const selectObject = (k: ObjKey) => {
+    setActive(k)
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const [vApp, setVApp] = useState(0)
   const [mApp, setMApp] = useState(0)
@@ -164,17 +170,16 @@ export function SmartcapMetricDemo() {
       title="객체별 3종 메트릭 시뮬레이터"
       subtitle="차량·원통 자재·하행 계단을 3D로 조작해, 카메라가 본 값이 실제 판별식으로 SAFE→WARNING→DANGER를 어떻게 넘는지 확인해 보세요."
       hint="화면은 three.js 실제 3D 장면입니다 — 슬라이더로 움직인 객체를 카메라로 투영해 나온 2D 값(박스 높이·단면 지름·소실점 y)에 실제 저장소의 판별식·임계값(차량 +50%/+200%, 자재 단면 ×1.1/×1.35, 계단 소실점 기준선·밑변 y≥634)을 그대로 적용합니다. 조작감을 위해 이 체험의 등급은 현재 값에 따라 실시간으로 오르내리는 양방향으로 동작합니다(실제 시스템은 다음 단계로만 오르는 단방향 + 미감지 시 리셋). 외부 에셋·네트워크 없이 정적으로 동작합니다."
-      onReset={reset}
     >
-      {/* 객체 탭 */}
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+      {/* 객체 탭 · 클릭 시 이 지점이 상단으로. 리셋은 같은 줄 우측 끝 */}
+      <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-wrap items-center gap-2">
         {OBJECTS.map(({ k, label, Icon }) => {
           const on = active === k
           const sev = machine[k].s
           return (
             <button
               key={k}
-              onClick={() => setActive(k)}
+              onClick={() => selectObject(k)}
               className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
                 on ? 'bg-black text-white' : 'border border-black/15 text-gray-600 hover:border-black'
               }`}
@@ -185,6 +190,13 @@ export function SmartcapMetricDemo() {
             </button>
           )
         })}
+        <button
+          onClick={reset}
+          className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/15 px-3.5 py-2 text-xs text-gray-600 transition-colors hover:border-black hover:text-black"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          리셋
+        </button>
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row">

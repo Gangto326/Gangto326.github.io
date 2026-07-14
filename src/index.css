@@ -14,10 +14,11 @@
     --font-geist-sans: 'Geist', 'Noto Sans KR', system-ui, sans-serif;
     --font-geist-mono: 'Geist Mono', ui-monospace, monospace;
 
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    /* 페이지 바탕은 웜 뉴트럴(98%), 카드는 순백 — 서피스 위계를 토큰으로 표현 */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
     --primary: 0 0% 9%;
@@ -34,13 +35,20 @@
     --input: 0 0% 89.8%;
     --ring: 0 0% 3.9%;
     --radius: 0.5rem;
+    /* 앰비언트 글로우 — 라이트: 웜 앰버, 다크: 청녹(teal) */
+    --glow: 27 96% 61%;
+    /* 트러블슈팅 등 시맨틱 상태 색 (문제/해결/결과) */
+    --danger: 350 89% 60%;
+    --info: 199 89% 48%;
+    --success: 160 84% 39%;
   }
 
   .dark {
+    /* 다크에서도 바탕(4%) < 카드(7%) 위계 유지 */
     --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --foreground: 0 0% 93%;
+    --card: 0 0% 7.1%;
+    --card-foreground: 0 0% 93%;
     --popover: 0 0% 3.9%;
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
@@ -56,6 +64,10 @@
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
+    --glow: 172 66% 50%;
+    --danger: 350 91% 71%;
+    --info: 199 90% 64%;
+    --success: 158 64% 52%;
   }
 }
 
@@ -73,8 +85,8 @@
     word-break: keep-all; /* 한글 어절 단위 줄바꿈 */
   }
   ::selection {
-    background: #111;
-    color: #fff;
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
   }
 }
 

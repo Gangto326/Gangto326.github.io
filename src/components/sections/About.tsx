@@ -4,18 +4,18 @@ import { profile } from '@/data/profile'
 
 export function About() {
   return (
-    <section id="about" className="scroll-mt-20 bg-[#f8f8f8] py-24 sm:py-32">
+    <section id="about" className="scroll-mt-20 border-t border-border bg-background py-24 sm:py-32">
       <Container>
         <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <p className="mb-3 flex items-center gap-3 text-sm tracking-[0.3em] text-gray-500">
-              <span className="h-px w-8 bg-black/30" aria-hidden="true" />
+            <p className="mb-3 flex items-center gap-3 text-xs font-medium tracking-widest text-muted-foreground">
+              <span className="h-px w-8 bg-foreground/30" aria-hidden="true" />
               WHO I AM
             </p>
-            <h2 className="text-4xl font-light tracking-tight sm:text-5xl">
+            <h2 className="text-4xl font-semibold tracking-tighter sm:text-5xl">
               ABOUT
             </h2>
-            <p className="mt-6 text-sm leading-relaxed text-gray-500">
+            <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
               {profile.name} · {profile.role}
             </p>
           </div>
@@ -24,7 +24,7 @@ export function About() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
           >
             <div className="space-y-5">
               {profile.bio.map((line, i) => (
@@ -32,8 +32,8 @@ export function About() {
                   key={i}
                   className={
                     i === 0
-                      ? 'text-lg font-normal leading-relaxed text-gray-900 sm:text-xl'
-                      : 'text-base leading-relaxed text-gray-600'
+                      ? 'text-balance text-lg font-medium leading-relaxed text-foreground sm:text-xl'
+                      : 'text-base leading-relaxed text-muted-foreground'
                   }
                 >
                   {line}
@@ -41,15 +41,15 @@ export function About() {
               ))}
             </div>
 
-            <div className="mt-10">
-              <p className="mb-4 text-xs tracking-[0.2em] text-gray-400">
+            <div className="mt-12">
+              <p className="mb-4 text-xs font-medium tracking-widest text-muted-foreground">
                 SKILLS
               </p>
               <div className="flex flex-wrap gap-2">
                 {profile.skills.map((s) => (
                   <span
                     key={s}
-                    className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs text-gray-700"
+                    className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-card-foreground shadow-sm"
                   >
                     {s}
                   </span>
@@ -57,18 +57,15 @@ export function About() {
               </div>
             </div>
 
-            <div className="mt-10">
-              <p className="mb-4 text-xs tracking-[0.2em] text-gray-400">
-                AWARDS & CERTIFICATES
+            <div className="mt-12">
+              <p className="mb-4 text-xs font-medium tracking-widest text-muted-foreground">
+                AWARDS &amp; CERTIFICATES
               </p>
-              <ul className="divide-y divide-black/5 border-t border-black/5">
+              <ul className="divide-y divide-border border-t border-border">
                 {profile.awards.map((a, i) => (
-                  <li
-                    key={i}
-                    className="flex items-baseline gap-4 py-3 text-sm"
-                  >
-                    <span className="w-12 shrink-0 text-gray-400">{a.year}</span>
-                    <span className="text-gray-700">{a.title}</span>
+                  <li key={i} className="flex items-baseline gap-4 py-3 text-sm">
+                    <span className="w-12 shrink-0 tabular-nums text-muted-foreground">{a.year}</span>
+                    <span className="text-foreground">{a.title}</span>
                   </li>
                 ))}
               </ul>
