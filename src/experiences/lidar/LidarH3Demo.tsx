@@ -13,8 +13,8 @@ const POINTS = (lidarData.points as [number, number, number][]).map(([x, y, pm])
 const RES_SIZE: Record<number, number> = { 9: 40, 10: 24, 11: 15 }
 
 // 실제 보간 지도 / H3 히트맵 (부채꼴 정렬용, 배경 투명 크롭)
-const INTERP = `${import.meta.env.BASE_URL}assets/lidar/pm-interp.png`
-const H3MAP = `${import.meta.env.BASE_URL}assets/lidar/pm-h3.png`
+const INTERP = `${import.meta.env.BASE_URL}assets/lidar/pm-interp.webp`
+const H3MAP = `${import.meta.env.BASE_URL}assets/lidar/pm-h3.webp`
 
 // PM 농도 → 색 (Turbo 계열 근사). 실측 분포(p50≈63, p90≈233)에 맞춰 30~250 범위.
 const STOPS: [number, [number, number, number]][] = [

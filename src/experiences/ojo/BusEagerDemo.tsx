@@ -17,7 +17,7 @@ interface Lane {
 }
 
 const VID = `${import.meta.env.BASE_URL}assets/ojo/bus-demo.mp4`
-const SEQ = `${import.meta.env.BASE_URL}assets/ojo/sequence.png`
+const SEQ = `${import.meta.env.BASE_URL}assets/ojo/sequence.webp`
 const BUS_NO = '360'
 
 // 영상 시간 = 타임라인 시간 (1:1). 영상 속 제스처 3.1s.

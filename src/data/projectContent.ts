@@ -243,7 +243,7 @@ export const projectContent: Record<string, ProjectContent> = {
       {
         title: '간편 웹 스크랩',
         desc: '오버레이·제스처 방식으로 웹사이트를 손쉽게 저장합니다.',
-        media: { kind: 'montage', srcs: ['assets/moda/scrap-overlay.gif', 'assets/moda/scrap-gesture.gif'] },
+        media: { kind: 'montage', srcs: ['assets/moda/scrap-overlay.mp4', 'assets/moda/scrap-gesture.mp4'] },
       },
       {
         title: 'AI 요약 · 키워드',

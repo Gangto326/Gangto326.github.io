@@ -169,16 +169,17 @@ function FeatureMedia({ media, order, stage = false }: { media?: FeatureMediaTyp
           stage ? 'lg:h-full lg:max-w-full lg:items-center lg:justify-center' : ''
         } ${order}`}
       >
-        {media.srcs.map((s) => (
-          <img
-            key={s}
-            src={base + s}
-            alt=""
-            className={`min-w-0 flex-1 rounded-lg border border-border bg-muted ${
-              stage ? 'lg:h-auto lg:max-h-full lg:w-auto lg:flex-initial' : ''
-            }`}
-          />
-        ))}
+        {media.srcs.map((s) => {
+          const cls = `min-w-0 flex-1 rounded-lg border border-border bg-muted ${
+            stage ? 'lg:h-auto lg:max-h-full lg:w-auto lg:flex-initial' : ''
+          }`
+          // mp4 몽타주는 GIF 대체물 — 자동재생·무한루프·무음으로 GIF와 동일하게 보이게
+          return s.endsWith('.mp4') ? (
+            <video key={s} src={base + s} autoPlay muted loop playsInline className={cls} />
+          ) : (
+            <img key={s} src={base + s} alt="" className={cls} />
+          )
+        })}
       </div>
     )
   }
