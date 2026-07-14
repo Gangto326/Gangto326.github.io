@@ -31,7 +31,7 @@ export const projects: Project[] = [
     experience: 'AI 파이프라인 시뮬레이터',
     github: 'https://github.com/Gangto326/OJO',
     accent: 'from-violet-400 via-fuchsia-300 to-pink-200',
-    thumb: 'assets/ojo/hero.jpg',
+    thumb: 'assets/ojo/hero.webp',
   },
   {
     id: 'lidar',
@@ -45,7 +45,7 @@ export const projects: Project[] = [
     highlight: '구역 통계 넓이 기준 H3 집계로 저장 약 98% 절감 · 실시간 히트맵',
     experience: 'H3 격자 압축 시각화',
     accent: 'from-sky-400 via-cyan-300 to-emerald-200',
-    thumb: 'assets/lidar/heatmap.jpg',
+    thumb: 'assets/lidar/heatmap.webp',
   },
   {
     id: 'smartcap',
@@ -60,7 +60,7 @@ export const projects: Project[] = [
     experience: '객체별 3종 메트릭 시뮬레이터',
     github: 'https://github.com/Gangto326/SmartCap',
     accent: 'from-amber-400 via-orange-300 to-yellow-200',
-    thumb: 'assets/smartcap/hero.jpg',
+    thumb: 'assets/smartcap/hero.webp',
   },
   {
     id: 'moda',
@@ -75,6 +75,6 @@ export const projects: Project[] = [
     experience: '쓰레드풀 Bulkhead 시뮬레이터',
     github: 'https://github.com/Gangto326/MODA',
     accent: 'from-rose-400 via-pink-300 to-orange-200',
-    thumb: 'assets/moda/hero.jpg',
+    thumb: 'assets/moda/hero.webp',
   },
 ]
