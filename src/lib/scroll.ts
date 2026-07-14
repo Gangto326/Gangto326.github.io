@@ -12,6 +12,13 @@ export function scrollToTop() {
 }
 
 /**
+ * 카드별 목표 오프셋 잠금 — 뷰(모드) 전환으로 카드 높이가 조금씩 달라도
+ * 한 인터랙션 안에서는 항상 같은 화면 위치에 안착하도록, 처음 계산한 오프셋을
+ * 같은 뷰포트 높이 동안 재사용한다 (리사이즈·회전 시 재계산).
+ */
+const offsetLock = new WeakMap<HTMLElement, { vh: number; offset: number }>()
+
+/**
  * 데모 카드가 화면에 가장 편하게 보이는 위치로 스크롤한다.
  * 카드가 뷰포트에 전부 담기면 세로 중앙 정렬, 안 담기면 상단 정렬(헤더 아래).
  * 목표와 현재 위치 차이가 ±24px 이내면 스크롤을 생략해 연속 클릭 시 꿀렁임을 막는다.
@@ -24,11 +31,18 @@ export function scrollDemoIntoView(anchor: HTMLElement | null) {
   const targetY = () => {
     const r = card.getBoundingClientRect()
     const vh = window.innerHeight
-    // 담기면 중앙 오프셋, 단 헤더보다는 아래로. 안 담기면 헤더 아래 상단 정렬.
-    const offset =
-      r.height <= vh - HEADER_OFFSET
-        ? Math.max((vh - r.height) / 2, HEADER_OFFSET)
-        : HEADER_OFFSET
+    const locked = offsetLock.get(card)
+    let offset: number
+    if (locked && locked.vh === vh) {
+      offset = locked.offset
+    } else {
+      // 담기면 중앙 오프셋, 단 헤더보다는 아래로. 안 담기면 헤더 아래 상단 정렬.
+      offset =
+        r.height <= vh - HEADER_OFFSET
+          ? Math.max((vh - r.height) / 2, HEADER_OFFSET)
+          : HEADER_OFFSET
+      offsetLock.set(card, { vh, offset })
+    }
     return Math.max(0, r.top + window.scrollY - offset)
   }
 
