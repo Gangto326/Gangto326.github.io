@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
+import { scrollDemoIntoView } from '@/lib/scroll'
 import lidarData from '@/data/lidarData.json'
 
 // 실제 라이다 15분 데이터(100,517행)를 다운샘플·투영한 값
@@ -100,8 +101,8 @@ export function LidarH3Demo() {
 
   const real = RES_DATA[String(res)]
   const topRef = useRef<HTMLDivElement>(null)
-  // 버튼 클릭으로 뷰가 바뀌면 데모 상단으로 스크롤해 결과가 화면에 보이게 한다
-  const scrollTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // 버튼 클릭으로 뷰가 바뀌면 데모가 가장 잘 보이는 위치(담기면 중앙·아니면 상단)로 스크롤
+  const scrollTop = () => scrollDemoIntoView(topRef.current)
   const selectView = (v: 'interactive' | 'maps') => {
     setView(v)
     scrollTop()
@@ -117,7 +118,7 @@ export function LidarH3Demo() {
       ]}
     >
       {/* 뷰 선택 · 클릭 시 이 지점이 상단으로 */}
-      <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-wrap gap-2">
+      <div ref={topRef} className="mb-5 flex flex-wrap gap-2">
         {(
           [
             { k: 'interactive', label: '인터랙티브' },

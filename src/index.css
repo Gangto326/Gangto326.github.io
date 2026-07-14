@@ -182,6 +182,8 @@
 @layer components {
   input[type='range'] {
     @apply h-6 cursor-pointer appearance-none bg-transparent;
+    /* 터치에서 슬라이더 드래그가 페이지 스크롤과 동시에 발생하지 않게 — 조작 시 슬라이더가 제스처를 독점 */
+    touch-action: none;
   }
   input[type='range']::-webkit-slider-runnable-track {
     height: 2px;

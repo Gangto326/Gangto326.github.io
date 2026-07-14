@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AlertTriangle, Bell, Check, Clock, Database, Globe, Loader2, Search, Server, Zap } from 'lucide-react'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
+import { scrollDemoIntoView } from '@/lib/scroll'
 
 /**
  * MODA — 쓰레드풀 고갈 Bulkhead 시뮬레이터.
@@ -63,18 +64,16 @@ export function BulkheadDemo() {
   const imgRejected = Math.max(0, req - IMG_MAX - IMG_QUEUE)
 
   const topRef = useRef<HTMLDivElement>(null)
-  // 버튼 클릭으로 구조가 바뀌면 데모 상단으로 스크롤해 상태 배너·풀 구조가 화면에 보이게 한다
-  const scrollTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // 모드 전환으로 구조가 바뀌면 데모가 가장 잘 보이는 위치(담기면 중앙·아니면 상단)로 스크롤.
+  // 폭주 토글은 이미지 처리 풀 카드 안에서의 조작이라 스크롤하지 않는다(시선 유지).
+  const scrollTop = () => scrollDemoIntoView(topRef.current)
 
   const selectMode = (m: Mode) => {
     setMode(m)
     if (m === 'off') setOverload(false)
     scrollTop()
   }
-  const toggleOverload = () => {
-    setOverload((v) => !v)
-    scrollTop()
-  }
+  const toggleOverload = () => setOverload((v) => !v)
 
   return (
     <ExperienceShell
@@ -88,7 +87,7 @@ export function BulkheadDemo() {
       ]}
     >
       {/* 모드 토글 + 슬라이더 · 클릭 시 이 지점이 상단으로 */}
-      <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center">
+      <div ref={topRef} className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="flex gap-2">
           {(
             [
