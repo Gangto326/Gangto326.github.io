@@ -50,7 +50,8 @@ export function ExperienceShell({
         )}
       </div>
 
-      <div>{children}</div>
+      {/* 인터랙션 본체 — 자동 스크롤은 제목·힌트가 아니라 이 영역이 전부 보이는 위치를 잡는다 */}
+      <div data-experience-body>{children}</div>
 
       {hint && (
         <div className="mt-5 border-t border-black/5 pt-4 text-xs leading-relaxed text-gray-400 dark:border-white/10">

@@ -11,51 +11,58 @@ export function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+/** 인터랙션 본체의 최소 상단 여백 — 스티키 내비(≈64px) + 숨쉴 공간.
+    바짝 붙이면 답답하다는 피드백으로 중앙 정렬 안착 위치(≈95px)와 비슷하게 맞춘 값. */
+const NAV_CLEAR = 96
+
 /**
- * 카드별 목표 오프셋 잠금 — 뷰(모드) 전환으로 카드 높이가 조금씩 달라도
+ * 카드별 목표 오프셋 잠금 — 뷰(모드) 전환으로 본체 높이가 조금씩 달라도
  * 한 인터랙션 안에서는 항상 같은 화면 위치에 안착하도록, 처음 계산한 오프셋을
  * 같은 뷰포트 높이 동안 재사용한다 (리사이즈·회전 시 재계산).
  */
 const offsetLock = new WeakMap<HTMLElement, { vh: number; offset: number }>()
 
 /**
- * 데모 카드가 화면에 가장 편하게 보이는 위치로 스크롤한다.
- * 카드가 뷰포트에 전부 담기면 세로 중앙 정렬, 안 담기면 상단 정렬(헤더 아래).
- * 목표와 현재 위치 차이가 ±24px 이내면 스크롤을 생략해 연속 클릭 시 꿀렁임을 막는다.
+ * 데모의 인터랙션 본체([data-experience-body] = 조작·결과 영역)가 가장 잘 보이는
+ * 위치로 스크롤한다. 제목·설명·하단 힌트보다 본체 가시성이 우선이다.
+ * 본체가 뷰포트에 전부 담기면 본체 중앙 정렬(내비 아래로 클램프), 안 담기면
+ * 내비 바로 아래부터 보여준다. 목표와 현재 차이가 ±4px 이내면 생략.
  * anchor는 카드 내부 요소여도 된다 — [data-experience-card] 조상을 기준으로 잡는다.
  */
 export function scrollDemoIntoView(anchor: HTMLElement | null) {
   if (!anchor) return
   const card = (anchor.closest('[data-experience-card]') as HTMLElement) ?? anchor
+  const body = (card.querySelector('[data-experience-body]') as HTMLElement) ?? card
 
   const targetY = () => {
-    const r = card.getBoundingClientRect()
+    const b = body.getBoundingClientRect()
     const vh = window.innerHeight
+    // 본체가 담기면(하단 16px 여유 포함) 중앙 정렬, 내비보다는 아래로. 안 담기면 내비 바로 아래.
+    const fresh =
+      b.height <= vh - NAV_CLEAR - 16
+        ? Math.max((vh - b.height) / 2, NAV_CLEAR)
+        : NAV_CLEAR
+    // 잠금은 지금까지 본 뷰들의 최솟값으로 수렴 — 더 긴 뷰를 처음 만날 때 한 번만
+    // 내려가고, 이후 모든 뷰에서 같은 위치 + 본체 하단 잘림 없음이 함께 보장된다
+    // (오프셋이 작아질수록 하단 여유는 커지므로 가시성은 항상 유지).
     const locked = offsetLock.get(card)
-    let offset: number
-    if (locked && locked.vh === vh) {
-      offset = locked.offset
-    } else {
-      // 담기면 중앙 오프셋, 단 헤더보다는 아래로. 안 담기면 헤더 아래 상단 정렬.
-      offset =
-        r.height <= vh - HEADER_OFFSET
-          ? Math.max((vh - r.height) / 2, HEADER_OFFSET)
-          : HEADER_OFFSET
-      offsetLock.set(card, { vh, offset })
-    }
-    return Math.max(0, r.top + window.scrollY - offset)
+    const offset = locked && locked.vh === vh ? Math.min(locked.offset, fresh) : fresh
+    offsetLock.set(card, { vh, offset })
+    return Math.max(0, b.top + window.scrollY - offset)
   }
 
-  // 뷰 전환 직후 카드 높이가 바뀌므로 렌더 반영 후(rAF) 계산한다
+  // 뷰 전환 직후 카드 높이가 바뀌므로 렌더 반영 후(rAF) 계산한다.
+  // 스킵 허용치 4px — 동일 목표 재클릭의 꿀렁임만 막고, 잠금 수렴에 따른
+  // 십수 px 보정(본체 하단 잘림 완화)은 놓치지 않게 좁게 잡는다.
   requestAnimationFrame(() => {
     const t = targetY()
-    if (Math.abs(t - window.scrollY) <= 24) return
+    if (Math.abs(t - window.scrollY) <= 4) return
     window.scrollTo({ top: t, behavior: 'smooth' })
     // 지연 로드(영상·이미지)로 높이가 밀리면 재보정 (최대 2회)
     let tries = 0
     const timer = window.setInterval(() => {
       const t2 = targetY()
-      if (Math.abs(t2 - window.scrollY) > 24) {
+      if (Math.abs(t2 - window.scrollY) > 4) {
         window.scrollTo({ top: t2, behavior: 'smooth' })
       }
       if (++tries >= 2) window.clearInterval(timer)
