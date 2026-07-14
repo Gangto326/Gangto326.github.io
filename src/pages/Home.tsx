@@ -12,7 +12,7 @@ const homeNav = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#f8f8f8]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <FloatingNav items={homeNav} />
       <Hero />

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
 import lidarData from '@/data/lidarData.json'
 
@@ -99,6 +99,13 @@ export function LidarH3Demo() {
   }, [size])
 
   const real = RES_DATA[String(res)]
+  const topRef = useRef<HTMLDivElement>(null)
+  // 버튼 클릭으로 뷰가 바뀌면 데모 상단으로 스크롤해 결과가 화면에 보이게 한다
+  const scrollTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const selectView = (v: 'interactive' | 'maps') => {
+    setView(v)
+    scrollTop()
+  }
   const reset = () => {
     setSlide(0)
     setRes(10)
@@ -113,8 +120,8 @@ export function LidarH3Demo() {
       hint="화면은 실제 15분 측정 데이터(100,517행)를 다운샘플해 투영한 것으로, 색은 실측 PM10 농도(파랑=저 · 빨강=고)입니다. 아래 '실측' 셀 수·압축률은 전체 데이터를 실제 H3로 집계한 결과이며, H3 해상도는 고객사 구역 통계의 넓이에 맞춰 선정했습니다."
       onReset={reset}
     >
-      {/* 뷰 선택 */}
-      <div className="mb-5 flex flex-wrap gap-2">
+      {/* 뷰 선택 · 클릭 시 이 지점이 상단으로 */}
+      <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-wrap gap-2">
         {(
           [
             { k: 'interactive', label: '인터랙티브' },
@@ -123,7 +130,7 @@ export function LidarH3Demo() {
         ).map((v) => (
           <button
             key={v.k}
-            onClick={() => setView(v.k)}
+            onClick={() => selectView(v.k)}
             className={`rounded-full px-4 py-2 text-sm transition-colors ${
               view === v.k ? 'bg-black text-white' : 'border border-black/15 text-gray-600 hover:border-black'
             }`}

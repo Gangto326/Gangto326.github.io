@@ -15,6 +15,8 @@ import { Container } from '@/components/Container'
 import { Navbar } from '@/components/layout/Navbar'
 import { FloatingNav } from '@/components/layout/FloatingNav'
 import { Footer } from '@/components/layout/Footer'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { ExperienceShell } from '@/experiences/ExperienceShell'
 import { experienceRegistry } from '@/experiences/registry'
 import { projects } from '@/data/projects'
@@ -28,7 +30,7 @@ import {
 function emphasize(text: string) {
   return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
     part.startsWith('**') && part.endsWith('**') ? (
-      <strong key={i} className="font-semibold text-gray-900">
+      <strong key={i} className="font-semibold text-foreground">
         {part.slice(2, -2)}
       </strong>
     ) : (
@@ -48,8 +50,8 @@ const projectNav = [
 function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div>
-      <p className="mb-2 text-xs tracking-[0.25em] text-gray-400">{eyebrow}</p>
-      <h2 className="text-2xl font-light tracking-tight sm:text-3xl">{title}</h2>
+      <p className="mb-2 text-xs font-medium tracking-widest text-muted-foreground">{eyebrow}</p>
+      <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h2>
     </div>
   )
 }
@@ -58,9 +60,9 @@ function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) 
 function ImagePlaceholder({ className = '' }: { className?: string }) {
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-black/15 bg-white text-gray-300 ${className}`}
+      className={`flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-card text-muted-foreground ${className}`}
     >
-      <ImageIcon className="h-6 w-6" />
+      <ImageIcon className="h-6 w-6" aria-hidden="true" />
       <span className="text-xs">이미지 준비 중</span>
     </div>
   )
@@ -89,7 +91,7 @@ function FeatureSequence({
   const r = ratio ?? '16 / 9'
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-2xl border border-black/10 bg-slate-100 ${
+      className={`relative w-full overflow-hidden rounded-lg border border-border bg-muted ${
         stage ? 'lg:w-[var(--seq-w)]' : ''
       } ${order}`}
       style={{
@@ -110,9 +112,12 @@ function FeatureSequence({
           className="absolute inset-0 h-full w-full object-contain"
         />
       </AnimatePresence>
-      <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 gap-1.5">
+      <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-2">
         {srcs.map((_, i) => (
-          <span key={i} className={`h-1.5 w-1.5 rounded-full transition-colors ${i === idx ? 'bg-white' : 'bg-white/45'}`} />
+          <span
+            key={i}
+            className={`h-1.5 w-1.5 rounded-full transition-colors ${i === idx ? 'bg-white' : 'bg-white/45'}`}
+          />
         ))}
       </div>
     </div>
@@ -129,7 +134,7 @@ function FeatureMedia({ media, order, stage = false }: { media?: FeatureMediaTyp
   if (media.kind === 'video') {
     return (
       <div
-        className={`aspect-video w-full overflow-hidden rounded-2xl bg-black ${stage ? 'lg:max-h-full' : ''} ${order}`}
+        className={`aspect-video w-full overflow-hidden rounded-lg bg-muted ${stage ? 'lg:max-h-full' : ''} ${order}`}
       >
         <video
           src={base + media.src}
@@ -155,15 +160,21 @@ function FeatureMedia({ media, order, stage = false }: { media?: FeatureMediaTyp
     )
   }
   if (media.kind === 'montage') {
+    // stage에서 flex-none을 쓰면 가로형 이미지가 컬럼을 넘어 텍스트를 덮는다 —
+    // flex-initial + max-h로 세로형은 높이에, 가로형은 컬럼 폭에 맞춰 축소한다
     return (
-      <div className={`flex items-start gap-3 ${stage ? 'lg:h-full lg:items-center lg:justify-center' : ''} ${order}`}>
+      <div
+        className={`flex min-w-0 items-start gap-3 ${
+          stage ? 'lg:h-full lg:max-w-full lg:items-center lg:justify-center' : ''
+        } ${order}`}
+      >
         {media.srcs.map((s) => (
           <img
             key={s}
             src={base + s}
             alt=""
-            className={`min-w-0 flex-1 rounded-2xl border border-black/10 bg-slate-50 ${
-              stage ? 'lg:h-full lg:w-auto lg:flex-none lg:object-contain' : ''
+            className={`min-w-0 flex-1 rounded-lg border border-border bg-muted ${
+              stage ? 'lg:h-auto lg:max-h-full lg:w-auto lg:flex-initial' : ''
             }`}
           />
         ))}
@@ -174,7 +185,7 @@ function FeatureMedia({ media, order, stage = false }: { media?: FeatureMediaTyp
     <img
       src={base + media.src}
       alt=""
-      className={`block w-full rounded-2xl border border-black/10 bg-slate-50 ${
+      className={`block w-full rounded-lg border border-border bg-muted ${
         stage ? 'lg:h-auto lg:max-h-full lg:w-auto lg:max-w-full' : ''
       } ${order}`}
     />
@@ -272,22 +283,22 @@ function FeatureShowcase({ features, accent }: { features: Feature[]; accent: st
             <div key={i} className="w-full shrink-0 px-1" aria-hidden={i !== idx}>
               <div className="grid items-center gap-8 py-8 lg:grid-cols-[0.42fr_0.58fr] lg:gap-16">
                 <div className="order-2 min-w-0 lg:order-1">
-                  <span className="block select-none text-[76px] font-extralight leading-none tracking-tighter text-black/[0.07] sm:text-[110px]">
+                  <span className="block select-none text-7xl font-extralight leading-none tracking-tighter text-foreground/10 sm:text-8xl">
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <h3 className="-mt-5 text-2xl font-medium tracking-tight sm:-mt-7 sm:text-3xl">
+                  <h3 className="-mt-4 text-2xl font-semibold tracking-tight sm:-mt-6 sm:text-3xl">
                     {f.title}
                   </h3>
-                  <p className="mt-4 max-w-md leading-relaxed text-gray-600">{f.desc}</p>
+                  <p className="mt-4 max-w-md leading-relaxed text-muted-foreground">{f.desc}</p>
                 </div>
 
                 <div className="relative order-1 min-w-0 lg:order-2">
                   <div
                     aria-hidden="true"
-                    className={`absolute inset-4 rounded-full bg-gradient-to-br ${accent} opacity-30 blur-3xl`}
+                    className={`absolute inset-4 rounded-full bg-gradient-to-br ${accent} opacity-30 blur-3xl dark:opacity-15`}
                   />
                   <div
-                    className={`[filter:drop-shadow(0_20px_36px_rgba(0,0,0,0.16))] transition-transform duration-500 lg:flex lg:h-[440px] lg:items-center lg:justify-center [&_img]:pointer-events-none [&_video]:pointer-events-none ${
+                    className={`drop-shadow-lg transition-transform duration-300 lg:flex lg:h-[440px] lg:items-center lg:justify-center [&_img]:pointer-events-none [&_video]:pointer-events-none ${
                       i % 2 === 1 ? 'lg:-rotate-1' : 'lg:rotate-1'
                     }`}
                   >
@@ -303,44 +314,48 @@ function FeatureShowcase({ features, accent }: { features: Feature[]; accent: st
       {/* 컨트롤 — 세그먼트 + 카운터 + 화살표 */}
       <div className="mt-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {features.map((_, i) => (
               <button
                 key={i}
                 onClick={() => go(i)}
                 aria-label={`${i + 1}번 기능 보기`}
-                className={`h-1 rounded-full transition-all duration-300 ${
-                  i === idx ? 'w-8 bg-black' : 'w-3 bg-black/15 hover:bg-black/40'
+                className={`h-1 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                  i === idx ? 'w-8 bg-foreground' : 'w-3 bg-foreground/15 hover:bg-foreground/40'
                 }`}
               />
             ))}
           </div>
-          <span className="text-xs tabular-nums tracking-widest text-gray-400">
+          <span className="text-xs tabular-nums tracking-widest text-muted-foreground">
             {String(idx + 1).padStart(2, '0')} / {String(features.length).padStart(2, '0')}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="mr-1 hidden items-center gap-1.5 text-[10px] font-medium tracking-[0.25em] text-gray-500 sm:inline-flex">
+          <span className="mr-1 hidden items-center gap-1 text-xs font-medium tracking-widest text-muted-foreground sm:inline-flex">
             <ChevronLeft className="h-3 w-3" aria-hidden="true" />
             SWIPE
             <ChevronRight className="h-3 w-3" aria-hidden="true" />
           </span>
-          <button
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => go(idx - 1)}
             disabled={idx === 0}
             aria-label="이전 기능"
-            className="rounded-full border border-black/15 p-2 text-gray-600 transition-colors hover:border-black disabled:cursor-not-allowed disabled:opacity-30"
+            className="h-9 w-9 rounded-full"
           >
             <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => go(idx + 1)}
             disabled={idx === features.length - 1}
             aria-label="다음 기능"
-            className="rounded-full border border-black/15 p-2 text-gray-600 transition-colors hover:border-black disabled:cursor-not-allowed disabled:opacity-30"
+            className="h-9 w-9 rounded-full"
           >
             <ChevronRight className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -365,11 +380,14 @@ export default function ProjectDetail() {
 
   if (!project || !content) {
     return (
-      <div className="min-h-screen bg-[#f8f8f8]">
+      <div className="min-h-screen bg-background">
         <Navbar />
         <Container className="py-32 text-center">
-          <p className="text-gray-500">프로젝트를 찾을 수 없습니다.</p>
-          <Link to="/" className="mt-4 inline-block text-sm underline">
+          <p className="text-muted-foreground">프로젝트를 찾을 수 없습니다.</p>
+          <Link
+            to="/"
+            className="mt-4 inline-block rounded-sm text-sm text-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
             홈으로 돌아가기
           </Link>
         </Container>
@@ -383,74 +401,80 @@ export default function ProjectDetail() {
   const cur = ts[tIdx]
 
   return (
-    <div className="min-h-screen bg-[#f8f8f8] text-black">
+    <div className="min-h-screen bg-background text-foreground">
       <Navbar />
       <FloatingNav items={projectNav} />
       <Container className="py-16">
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-black"
+          className="inline-flex items-center gap-2 rounded-sm text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <ArrowLeft className="h-4 w-4" /> ALL PROJECTS
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" /> ALL PROJECTS
         </Link>
 
         {/* 헤더 */}
-        <header className="mt-8 border-b border-black/10 pb-12">
-          <span className="text-sm text-gray-400">{project.index}</span>
-          <h1 className="mt-2 text-4xl font-light tracking-tight sm:text-5xl">
+        <header className="mt-8 border-b border-border pb-12">
+          <span className="text-sm tabular-nums text-muted-foreground">{project.index}</span>
+          <h1 className="mt-2 text-4xl font-semibold tracking-tighter sm:text-5xl">
             {project.name}
           </h1>
-          <p className="mt-2 text-gray-500">
+          <p className="mt-2 text-muted-foreground">
             {project.nameKo} · {project.tagline}
           </p>
-          <p className="mt-6 max-w-2xl leading-relaxed text-gray-700">
+          <p className="mt-6 max-w-2xl text-balance leading-relaxed text-foreground">
             {project.highlight}
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
             {project.stack.map((s) => (
               <span
                 key={s}
-                className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs text-gray-600"
+                className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-card-foreground shadow-sm"
               >
                 {s}
               </span>
             ))}
           </div>
           <div className="mt-8 flex flex-wrap items-center gap-4">
-            <span className="text-xs tracking-wide text-gray-500">
+            <span className="text-xs tracking-wide text-muted-foreground">
               {project.role} · {project.meta}
             </span>
             {project.github && (
-              <a
-                href={project.github}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border border-black/20 px-4 py-2 text-xs transition-colors hover:border-black"
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="rounded-full text-xs text-muted-foreground hover:text-foreground"
               >
-                <GithubIcon className="h-4 w-4" /> GitHub
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </a>
+                <a href={project.github} target="_blank" rel="noreferrer">
+                  <GithubIcon className="h-4 w-4" /> GitHub
+                  <ArrowUpRight className="h-4 w-4" />
+                </a>
+              </Button>
             )}
           </div>
         </header>
 
         {/* 대표 이미지 히어로 */}
         {project.thumb && (
-          <div className="mt-10 overflow-hidden rounded-3xl border border-black/10 bg-white">
-            <img src={import.meta.env.BASE_URL + project.thumb} alt={`${project.name} 대표 이미지`} className="block w-full object-contain" />
-          </div>
+          <Card className="mt-10 overflow-hidden">
+            <img
+              src={import.meta.env.BASE_URL + project.thumb}
+              alt={`${project.name} 대표 이미지`}
+              className="block w-full object-contain"
+            />
+          </Card>
         )}
 
         {/* 개요 */}
-        <section id="overview" className="scroll-mt-24 py-14">
+        <section id="overview" className="scroll-mt-24 py-16">
           <SectionHeading eyebrow="OVERVIEW" title="프로젝트 개요" />
-          <p className="mt-6 max-w-2xl leading-relaxed text-gray-700">
+          <p className="mt-6 max-w-2xl leading-relaxed text-muted-foreground">
             {content.overview}
           </p>
         </section>
 
         {/* 핵심 기능 — 목록 + 미디어 스테이지 쇼케이스 */}
-        <section id="features" className="scroll-mt-24 border-t border-black/10 py-14">
+        <section id="features" className="scroll-mt-24 border-t border-border py-16">
           <SectionHeading eyebrow="FEATURES" title="핵심 기능" />
           <FeatureShowcase features={content.features} accent={project.accent} />
         </section>
@@ -459,30 +483,34 @@ export default function ProjectDetail() {
         <section
           id="troubleshooting"
           ref={tsRef}
-          className="scroll-mt-24 border-t border-black/10 py-14"
+          className="scroll-mt-24 border-t border-border py-16"
         >
           <div className="flex items-end justify-between gap-4">
             <SectionHeading eyebrow="TROUBLESHOOTING" title="기술적 문제 해결" />
             <div className="flex items-center gap-3">
-              <span className="text-sm tabular-nums text-gray-400">
+              <span className="text-sm tabular-nums text-muted-foreground">
                 {tIdx + 1} / {ts.length}
               </span>
-              <button
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => setTIdx((i) => Math.max(0, i - 1))}
                 disabled={tIdx === 0}
-                aria-label="이전"
-                className="rounded-full border border-black/15 p-2 text-gray-600 transition-colors hover:border-black disabled:cursor-not-allowed disabled:opacity-30"
+                aria-label="이전 트러블슈팅"
+                className="h-9 w-9 rounded-full"
               >
                 <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => setTIdx((i) => Math.min(ts.length - 1, i + 1))}
                 disabled={tIdx === ts.length - 1}
-                aria-label="다음"
-                className="rounded-full border border-black/15 p-2 text-gray-600 transition-colors hover:border-black disabled:cursor-not-allowed disabled:opacity-30"
+                aria-label="다음 트러블슈팅"
+                className="h-9 w-9 rounded-full"
               >
                 <ChevronRight className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -490,7 +518,7 @@ export default function ProjectDetail() {
             key={tIdx}
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.35, ease: 'easeOut' }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
             {...(isTouch
               ? {
                   drag: 'x' as const,
@@ -504,26 +532,25 @@ export default function ProjectDetail() {
                   },
                 }
               : {})}
-            className={`mt-8 touch-pan-y rounded-3xl border border-black/10 bg-white p-6 sm:p-10 ${
+            className={`mt-8 touch-pan-y rounded-lg border border-border bg-card p-6 shadow-sm sm:p-10 ${
               isTouch ? 'cursor-grab active:cursor-grabbing' : ''
             }`}
           >
-            <h3 className="text-lg font-medium tracking-tight sm:text-xl">
+            <h3 className="text-lg font-semibold tracking-tight sm:text-xl">
               {cur.title}
             </h3>
             <div className="mt-8 grid gap-6 sm:grid-cols-3 sm:gap-8">
               {[
-                { k: '문제', v: cur.problem, c: 'text-rose-500', b: 'bg-rose-50' },
-                { k: '해결', v: cur.solution, c: 'text-sky-500', b: 'bg-sky-50' },
-                { k: '결과', v: cur.result, c: 'text-emerald-500', b: 'bg-emerald-50' },
+                { k: '문제', v: cur.problem, dot: 'bg-danger' },
+                { k: '해결', v: cur.solution, dot: 'bg-info' },
+                { k: '결과', v: cur.result, dot: 'bg-success' },
               ].map((col) => (
                 <div key={col.k}>
-                  <span
-                    className={`inline-block rounded-full px-3 py-1 text-xs font-medium tracking-[0.15em] ${col.c} ${col.b}`}
-                  >
+                  <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium tracking-widest text-secondary-foreground">
+                    <span className={`h-1.5 w-1.5 rounded-full ${col.dot}`} aria-hidden="true" />
                     {col.k}
                   </span>
-                  <p className="mt-4 text-sm leading-relaxed text-gray-700">
+                  <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
                     {emphasize(col.v)}
                   </p>
                 </div>
@@ -538,8 +565,8 @@ export default function ProjectDetail() {
                 key={i}
                 onClick={() => setTIdx(i)}
                 aria-label={`${i + 1}번 트러블슈팅`}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === tIdx ? 'w-6 bg-black' : 'w-1.5 bg-black/20'
+                className={`h-1.5 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                  i === tIdx ? 'w-6 bg-foreground' : 'w-1.5 bg-foreground/20'
                 }`}
               />
             ))}
@@ -547,15 +574,15 @@ export default function ProjectDetail() {
         </section>
 
         {/* 회고 — 포인트 굵게 */}
-        <section id="retrospective" className="scroll-mt-24 border-t border-black/10 py-14">
+        <section id="retrospective" className="scroll-mt-24 border-t border-border py-16">
           <SectionHeading eyebrow="RETROSPECTIVE" title="회고" />
           <div className="mt-8 space-y-8">
             {content.retrospective.map((r, i) => (
-              <div key={i} className="max-w-2xl border-l-2 border-black/10 pl-5">
+              <div key={i} className="max-w-2xl border-l-2 border-border pl-6">
                 <h3 className="text-lg font-semibold tracking-tight">
                   {r.heading}
                 </h3>
-                <p className="mt-2 leading-relaxed text-gray-600">
+                <p className="mt-2 leading-relaxed text-muted-foreground">
                   {emphasize(r.body)}
                 </p>
               </div>
@@ -564,11 +591,11 @@ export default function ProjectDetail() {
         </section>
 
         {/* 체험형 데모 (맨 아래) */}
-        <section id="demo" className="scroll-mt-24 border-t border-black/10 py-14">
+        <section id="demo" className="scroll-mt-24 border-t border-border py-16">
           {Demo ? (
             <Suspense
               fallback={
-                <div className="flex items-center justify-center rounded-3xl border border-black/10 bg-white py-24 text-center text-sm text-gray-400">
+                <div className="flex items-center justify-center rounded-lg border border-border bg-card py-24 text-center text-sm text-muted-foreground">
                   체험 로딩 중…
                 </div>
               }
@@ -580,7 +607,7 @@ export default function ProjectDetail() {
               title={project.experience}
               subtitle="인터랙티브 데모 준비 중"
             >
-              <div className="flex items-center justify-center rounded-2xl border border-dashed border-black/15 py-16 text-center text-sm text-gray-400">
+              <div className="flex items-center justify-center rounded-lg border border-dashed border-black/15 py-16 text-center text-sm text-gray-400">
                 곧 이 자리에서 직접 조작하며 핵심 원리를 체험할 수 있습니다.
               </div>
             </ExperienceShell>

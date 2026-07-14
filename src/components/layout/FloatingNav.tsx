@@ -43,22 +43,22 @@ export function FloatingNav({ items }: { items: FloatingNavItem[] }) {
                 onClick={() => scrollToId(it.id)}
                 aria-label={it.label}
                 aria-current={on ? 'true' : undefined}
-                className="group flex items-center gap-2.5 py-0.5"
+                className="group flex items-center gap-2 rounded-sm py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <span
-                  className={`text-[10px] tracking-[0.22em] transition-all duration-300 ${
+                  className={`text-xs font-medium tracking-widest transition-all duration-300 ${
                     on
-                      ? 'translate-x-0 text-black opacity-100'
-                      : 'translate-x-1.5 text-gray-500 opacity-0 group-hover:translate-x-0 group-hover:opacity-100'
+                      ? 'translate-x-0 text-foreground opacity-100'
+                      : 'translate-x-2 text-muted-foreground opacity-0 group-hover:translate-x-0 group-hover:opacity-100'
                   }`}
                 >
                   {it.label}
                 </span>
                 <span
-                  className={`h-[2px] rounded-full transition-all duration-300 ${
+                  className={`h-0.5 rounded-full transition-all duration-300 ${
                     on
-                      ? 'w-8 bg-black'
-                      : 'w-4 bg-black/20 group-hover:w-6 group-hover:bg-black/50'
+                      ? 'w-8 bg-foreground'
+                      : 'w-4 bg-foreground/20 group-hover:w-6 group-hover:bg-foreground/50'
                   }`}
                 />
               </button>
