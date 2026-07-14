@@ -8,7 +8,9 @@ const BASE = import.meta.env.BASE_URL
 /**
  * 하단 중앙 프로젝트 독 — 프로젝트 상세 페이지 전용.
  * 평소엔 "01 / 04" + 미니 타일의 접힌 알약으로 본문 가림을 최소화하고,
- * 호버/키보드 포커스 시 독으로 확장된다. 스크롤 다운 중엔 아래로 숨고 업 시 복귀.
+ * 호버/키보드 포커스 시 독으로 확장된다. 호버가 없는 터치(패드)에선 접힘 상태
+ * 첫 탭이 내비게이션 대신 확장으로 동작하고, 바깥 탭으로 접힌다.
+ * 스크롤 다운 중엔 아래로 숨고 업 시 복귀.
  * 모바일(<md)은 숨김 — OTHER PROJECTS 섹션이 대신한다.
  */
 export function ProjectDock({ currentId }: { currentId: string }) {
@@ -74,6 +76,19 @@ export function ProjectDock({ currentId }: { currentId: string }) {
     setHoverTile(null)
   }
 
+  // 터치에는 mouseleave가 없으므로 확장 중 바깥 탭/클릭으로 접는다
+  useEffect(() => {
+    if (!expanded) return
+    const onDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) {
+        setExpanded(false)
+        setHoverTile(null)
+      }
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [expanded])
+
   const isExpanded = expanded || pinned
 
   return (
@@ -93,8 +108,13 @@ export function ProjectDock({ currentId }: { currentId: string }) {
     >
       <nav
         aria-label="프로젝트 바로가기"
-        className="surface-card flex items-end gap-2 rounded-full border border-border bg-background/80 shadow-lg backdrop-blur transition-[padding] duration-200"
+        className={`surface-card flex items-end gap-2 rounded-full border border-border bg-background/80 shadow-lg backdrop-blur transition-[padding] duration-200 ${
+          isExpanded ? '' : 'cursor-pointer'
+        }`}
         style={{ padding: isExpanded ? '10px 16px' : '8px 12px' }}
+        onClick={() => {
+          if (!isExpanded) setExpanded(true)
+        }}
       >
         {/* 현재 위치 라벨 — 접힘 상태의 정체성. 확장 시엔 타일이 말하므로 숨김 */}
         <AnimatePresence initial={false}>
@@ -124,7 +144,15 @@ export function ProjectDock({ currentId }: { currentId: string }) {
                   onMouseLeave={() => setHoverTile(null)}
                   onFocus={() => setHoverTile(p.id)}
                   onBlur={() => setHoverTile(null)}
-                  onClick={collapse}
+                  onClick={(e) => {
+                    // 접힘 상태의 첫 탭/클릭은 내비게이션 대신 확장 — 호버 없는 터치 대응
+                    if (!isExpanded) {
+                      e.preventDefault()
+                      setExpanded(true)
+                      return
+                    }
+                    collapse()
+                  }}
                   className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   <motion.span

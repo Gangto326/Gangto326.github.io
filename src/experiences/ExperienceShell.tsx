@@ -14,8 +14,8 @@ interface ExperienceShellProps {
 /**
  * 모든 체험형 데모의 공통 껍데기.
  * 제목·설명·리셋 버튼·조작 안내를 제공하고, 데모 본체를 children으로 감싼다.
- * 데모 내부는 라이트 팔레트로 튜닝되어 있어, 다크 모드에서도 흰 배경을
- * 유지하는 '라이트 고정 서피스'로 취급한다 (figure 임베드처럼 보이도록).
+ * 다크 모드에선 카드·컨트롤이 다크 팔레트를 따르되, 미디어성 서피스
+ * (시연 영상·다이어그램 PNG·3D 뷰포트)는 라이트 튜닝을 유지한다.
  */
 export function ExperienceShell({
   title,
@@ -25,13 +25,13 @@ export function ExperienceShell({
   children,
 }: ExperienceShellProps) {
   return (
-    <div className="rounded-lg border border-black/10 bg-white p-6 text-neutral-900 shadow-sm sm:p-8">
+    <div className="surface-card rounded-lg border border-black/10 bg-white p-6 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-card dark:text-neutral-100 sm:p-8">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs tracking-widest text-gray-400">EXPERIENCE</p>
           <h3 className="mt-1 text-xl font-medium tracking-tight">{title}</h3>
           {subtitle && (
-            <p className="mt-1 max-w-xl text-sm leading-relaxed text-gray-500">
+            <p className="mt-1 max-w-xl text-sm leading-relaxed text-gray-500 dark:text-gray-400">
               {subtitle}
             </p>
           )}
@@ -39,7 +39,7 @@ export function ExperienceShell({
         {onReset && (
           <button
             onClick={onReset}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/15 px-3.5 py-2 text-xs text-gray-600 transition-colors hover:border-black hover:text-black"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/15 px-3.5 py-2 text-xs text-gray-600 transition-colors hover:border-black hover:text-black dark:border-white/20 dark:text-gray-300 dark:hover:border-white dark:hover:text-white"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             리셋
@@ -50,7 +50,7 @@ export function ExperienceShell({
       <div>{children}</div>
 
       {hint && (
-        <div className="mt-5 border-t border-black/5 pt-4 text-xs leading-relaxed text-gray-400">
+        <div className="mt-5 border-t border-black/5 pt-4 text-xs leading-relaxed text-gray-400 dark:border-white/10">
           {Array.isArray(hint) ? (
             <ul className="list-disc space-y-1.5 pl-4">
               {hint.map((h, i) => (

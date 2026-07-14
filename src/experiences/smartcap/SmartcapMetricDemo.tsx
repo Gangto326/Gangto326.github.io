@@ -39,9 +39,30 @@ type Sev = 'SAFE' | 'WARNING' | 'DANGER'
 type ObjKey = 'vehicle' | 'material' | 'stairs'
 
 const SEV: Record<Sev, { c: string; soft: string; ko: string; tx: string; bg: string; bd: string }> = {
-  SAFE: { c: '#10b981', soft: '#6ee7b7', ko: '안전 · SAFE', tx: 'text-emerald-600', bg: 'bg-emerald-50', bd: 'border-emerald-200' },
-  WARNING: { c: '#f59e0b', soft: '#fcd34d', ko: '주의 · WARNING', tx: 'text-amber-600', bg: 'bg-amber-50', bd: 'border-amber-200' },
-  DANGER: { c: '#ef4444', soft: '#fca5a5', ko: '위험 · DANGER', tx: 'text-rose-600', bg: 'bg-rose-50', bd: 'border-rose-200' },
+  SAFE: {
+    c: '#10b981',
+    soft: '#6ee7b7',
+    ko: '안전 · SAFE',
+    tx: 'text-emerald-600 dark:text-emerald-400',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    bd: 'border-emerald-200 dark:border-emerald-900/60',
+  },
+  WARNING: {
+    c: '#f59e0b',
+    soft: '#fcd34d',
+    ko: '주의 · WARNING',
+    tx: 'text-amber-600 dark:text-amber-400',
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    bd: 'border-amber-200 dark:border-amber-900/60',
+  },
+  DANGER: {
+    c: '#ef4444',
+    soft: '#fca5a5',
+    ko: '위험 · DANGER',
+    tx: 'text-rose-600 dark:text-rose-400',
+    bg: 'bg-rose-50 dark:bg-rose-950/40',
+    bd: 'border-rose-200 dark:border-rose-900/60',
+  },
 }
 
 // 실제 저장소 임계값
@@ -185,7 +206,9 @@ export function SmartcapMetricDemo() {
               key={k}
               onClick={() => selectObject(k)}
               className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
-                on ? 'bg-black text-white' : 'border border-black/15 text-gray-600 hover:border-black'
+                on
+                  ? 'bg-black text-white dark:bg-white dark:text-black'
+                  : 'border border-black/15 text-gray-600 hover:border-black dark:border-white/20 dark:text-gray-300 dark:hover:border-white'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -196,7 +219,7 @@ export function SmartcapMetricDemo() {
         })}
         <button
           onClick={reset}
-          className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/15 px-3.5 py-2 text-xs text-gray-600 transition-colors hover:border-black hover:text-black"
+          className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/15 px-3.5 py-2 text-xs text-gray-600 transition-colors hover:border-black hover:text-black dark:border-white/20 dark:text-gray-300 dark:hover:border-white dark:hover:text-white"
         >
           <RotateCcw className="h-3.5 w-3.5" />
           리셋
@@ -204,10 +227,10 @@ export function SmartcapMetricDemo() {
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row">
-        {/* 3D 뷰 + 측정 오버레이 */}
+        {/* 3D 뷰 + 측정 오버레이 — three.js 장면·SVG 주석이 라이트 팔레트 튜닝이라 다크에서도 bg-slate-50 유지 */}
         <div className="lg:w-[46%]">
           <div
-            className="relative mx-auto max-w-[380px] overflow-hidden rounded-2xl border border-black/10 bg-slate-50"
+            className="relative mx-auto max-w-[380px] overflow-hidden rounded-2xl border border-black/10 bg-slate-50 dark:border-white/10"
             style={{ aspectRatio: `${IMG_W} / ${IMG_H}` }}
           >
             <Canvas
@@ -282,7 +305,7 @@ export function SmartcapMetricDemo() {
                     { label: 'DANGER', at: '+200%', hit: vInc > V_DANGER },
                   ]}
                 />
-                <p className="text-xs leading-relaxed text-gray-500">
+                <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
                   차량을 처음 본 순간의 박스 높이를 baseline으로 고정하고, 이후 카메라가 본 높이가 얼마나 커졌는지를 비율로 봅니다.
                   다가올수록 원근에 의해 박스가 커져 증가율이 곧 접근도입니다 — <strong>+50%</strong>에서 경고, <strong>+200%(=3배)</strong>에서 위험.
                 </p>
@@ -307,7 +330,7 @@ export function SmartcapMetricDemo() {
                     { label: 'DANGER', at: '×1.35 · 3프레임', hit: mRatio >= M_SECOND },
                   ]}
                 />
-                <p className="text-xs leading-relaxed text-gray-500">
+                <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
                   판정값은 실루엣의 <strong>최소외접회전사각형(minAreaRect) 짧은 변</strong> = 가장 굵게 보이는 단면 지름입니다.
                   <strong>회전 슬라이더</strong>로 파이프 끝단을 카메라 쪽으로 스윙하면, 축이 제자리에 있어도 가까워진 쪽 단면이 굵어져 짧은 변이 커집니다(접근 판정).
                   AABB 대신 minAreaRect를 쓰는 건 파이프가 비스듬히 놓여도 지름을 정확히 재기 위함입니다. 임계 초과가 <strong>3프레임 연속</strong>이어야 등급이 올라 노이즈 오탐을 막습니다.
@@ -333,7 +356,7 @@ export function SmartcapMetricDemo() {
                     { label: 'DANGER', at: `하행 + 밑변 y ≥ ${S_BOTTOM_DANGER}`, hit: sMeas.desc && sMeas.cy >= S_BOTTOM_DANGER },
                   ]}
                 />
-                <p className="text-xs leading-relaxed text-gray-500">
+                <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
                   계단 빗변을 연장한 <strong>소실점</strong>이 기준선(지평선)보다 아래면 하행, 위면 상행입니다.
                   시선 슬라이더로 계단을 상행↔하행으로 기울여 소실점이 기준선을 넘는 순간을 보세요. 하행이면 경고,
                   하행 상태에서 밑변이 화면 바닥(<strong>y≥{S_BOTTOM_DANGER}</strong>)까지 내려오면 위험. <strong>상행은 항상 안전</strong>입니다.
@@ -342,7 +365,7 @@ export function SmartcapMetricDemo() {
             )}
 
             {/* 양방향 안내 (별도 명시) */}
-            <p className="rounded-xl border border-amber-200/70 bg-amber-50/60 px-3 py-2.5 text-xs leading-relaxed text-amber-700">
+            <p className="rounded-xl border border-amber-200/70 bg-amber-50/60 px-3 py-2.5 text-xs leading-relaxed text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
               <strong>이 체험은 양방향입니다.</strong> 슬라이더를 되돌려 값이 작아지면 위험 등급도 실시간으로{' '}
               <strong>다시 내려갑니다</strong>(경계 떨림 방지를 위해 {N_FRAMES}프레임 유지 후 한 단계씩 이동).
               실제 시스템은 <strong>단방향</strong>이라 등급이 다음 단계로 오르기만 하고, 객체가 일정 시간 사라져야 SAFE로 리셋됩니다.
@@ -352,7 +375,7 @@ export function SmartcapMetricDemo() {
       </div>
 
       {/* Risk Code 종합 */}
-      <div className="mt-6 rounded-2xl border border-black/10 p-4 sm:p-5">
+      <div className="mt-6 rounded-2xl border border-black/10 p-4 dark:border-white/10 sm:p-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-[11px] tracking-widest text-gray-400">최종 RISK CODE (0~10)</p>
@@ -360,12 +383,12 @@ export function SmartcapMetricDemo() {
               <span className="text-4xl font-light tabular-nums" style={{ color: finalCode === 0 ? SEV.SAFE.c : finalCode % 3 === 2 ? SEV.DANGER.c : SEV.WARNING.c }}>
                 {finalCode}
               </span>
-              <span className="text-sm text-gray-500">{CODE_LABELS[finalCode]}</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">{CODE_LABELS[finalCode]}</span>
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             {OBJECTS.map(({ k, label }) => (
-              <div key={k} className={`rounded-xl border px-3 py-2 ${codes[k] === finalCode && finalCode > 0 ? `${SEV[machine[k].s].bg} ${SEV[machine[k].s].bd}` : 'border-black/10'}`}>
+              <div key={k} className={`rounded-xl border px-3 py-2 ${codes[k] === finalCode && finalCode > 0 ? `${SEV[machine[k].s].bg} ${SEV[machine[k].s].bd}` : 'border-black/10 dark:border-white/10'}`}>
                 <p className="text-[10px] text-gray-400">{label}</p>
                 <p className="text-lg font-light tabular-nums" style={{ color: SEV[machine[k].s].c }}>
                   {codes[k]}
@@ -374,7 +397,7 @@ export function SmartcapMetricDemo() {
             ))}
           </div>
         </div>
-        <p className="mt-3 border-t border-black/5 pt-3 text-xs leading-relaxed text-gray-500">
+        <p className="mt-3 border-t border-black/5 pt-3 text-xs leading-relaxed text-gray-500 dark:border-white/10 dark:text-gray-400">
           하나의 정수로 <strong>무엇이</strong>(자재 0· 낙상 3· 차량 6) + <strong>얼마나</strong>(경고 +1· 위험 +2)를 함께 인코딩하고,
           세 객체 중 최댓값을 대표 코드로 씁니다. 각 객체를 조작해 어떤 위험이 최종 코드를 가져가는지 확인해 보세요.
         </p>
@@ -552,7 +575,7 @@ function SliderRow({ label, right, value, onChange, min = 0, max = 100, from, to
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between">
-        <span className="text-sm text-gray-700">{label}</span>
+        <span className="text-sm text-gray-700 dark:text-gray-200">{label}</span>
         <span className="text-xs tabular-nums text-gray-400">{right}</span>
       </div>
       <input type="range" min={min} max={max} step={1} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-black" aria-label={label} />
@@ -568,7 +591,7 @@ function MetricGrid({ items }: { items: { k: string; v: string; sub?: string; ac
   return (
     <div className={`grid gap-2 ${items.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
       {items.map((it) => (
-        <div key={it.k} className="rounded-xl bg-gray-50 p-3">
+        <div key={it.k} className="rounded-xl bg-gray-50 p-3 dark:bg-white/5">
           <p className="text-[10px] tracking-wide text-gray-400">{it.k}</p>
           <p className="mt-0.5 text-lg font-light tabular-nums" style={it.accent ? { color: SEV[it.accent].c } : undefined}>
             {it.v}
@@ -585,8 +608,11 @@ function ThresholdBar({ rows }: { rows: { label: string; at: string; hit: boolea
     <div className="space-y-1.5">
       {rows.map((r) => (
         <div key={r.label} className="flex items-center gap-2 text-xs">
-          <span className="h-2 w-2 rounded-full" style={{ background: r.hit ? (r.label === 'DANGER' ? SEV.DANGER.c : SEV.WARNING.c) : '#d1d5db' }} />
-          <span className={r.hit ? 'font-medium text-gray-800' : 'text-gray-400'}>{r.label}</span>
+          <span
+            className={`h-2 w-2 rounded-full ${r.hit ? '' : 'bg-gray-300 dark:bg-gray-600'}`}
+            style={r.hit ? { background: r.label === 'DANGER' ? SEV.DANGER.c : SEV.WARNING.c } : undefined}
+          />
+          <span className={r.hit ? 'font-medium text-gray-800 dark:text-gray-100' : 'text-gray-400'}>{r.label}</span>
           <span className="text-gray-400">임계 {r.at}</span>
           <span className="ml-auto text-gray-400">{r.hit ? '충족' : '미충족'}</span>
         </div>
@@ -602,12 +628,19 @@ function FrameProgress({ o }: { o: OState }) {
   const label = SEV[o.pending].ko.split(' ')[0] // 안전 / 주의 / 위험
   const barColor = up ? SEV[o.pending].c : '#94a3b8'
   return (
-    <div className="flex items-center gap-2 text-xs text-gray-500">
+    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
       <span className="text-gray-400">등급 변화</span>
       <div className="flex gap-1">
-        {Array.from({ length: N_FRAMES }).map((_, i) => (
-          <span key={i} className="h-2 w-6 rounded-full" style={{ background: changing && i < o.cnt ? barColor : '#e5e7eb' }} />
-        ))}
+        {Array.from({ length: N_FRAMES }).map((_, i) => {
+          const lit = changing && i < o.cnt
+          return (
+            <span
+              key={i}
+              className={`h-2 w-6 rounded-full ${lit ? '' : 'bg-gray-200 dark:bg-white/10'}`}
+              style={lit ? { background: barColor } : undefined}
+            />
+          )
+        })}
       </div>
       <span className="tabular-nums text-gray-400">{changing ? `${o.cnt}/${N_FRAMES} ${up ? '▲' : '▼'} ${label}` : '안정'}</span>
     </div>
