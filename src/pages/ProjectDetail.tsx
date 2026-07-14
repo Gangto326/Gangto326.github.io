@@ -25,7 +25,34 @@ import {
   projectContent,
   type Feature,
   type FeatureMedia as FeatureMediaType,
+  type Troubleshooting,
 } from '@/data/projectContent'
+
+/** 트러블슈팅 카드 본문 — 실제 표시용과 높이 점유용(invisible 사이저)이 공유 */
+function TsBody({ item }: { item: Troubleshooting }) {
+  return (
+    <>
+      <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">{item.title}</h3>
+      <div className="mt-8 grid gap-6 sm:grid-cols-3 sm:gap-8">
+        {[
+          { k: '문제', v: item.problem, dot: 'bg-danger' },
+          { k: '해결', v: item.solution, dot: 'bg-info' },
+          { k: '결과', v: item.result, dot: 'bg-success' },
+        ].map((col) => (
+          <div key={col.k}>
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium tracking-widest text-secondary-foreground">
+              <span className={`h-1.5 w-1.5 rounded-full ${col.dot}`} aria-hidden="true" />
+              {col.k}
+            </span>
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+              {emphasize(col.v)}
+            </p>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
 
 /** 본문 내 **강조** 마커를 굵은 글씨로 렌더링 */
 function emphasize(text: string) {
@@ -521,49 +548,43 @@ export default function ProjectDetail() {
             </div>
           </div>
 
-          <motion.article
-            key={tIdx}
-            initial={{ opacity: 0, x: 24 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            {...(isTouch
-              ? {
-                  drag: 'x' as const,
-                  dragConstraints: { left: 0, right: 0 },
-                  dragElastic: 0.1,
-                  onDragEnd: (_: unknown, info: PanInfo) => {
-                    if (info.offset.x < -70 || info.velocity.x < -400)
-                      setTIdx((i) => Math.min(ts.length - 1, i + 1))
-                    else if (info.offset.x > 70 || info.velocity.x > 400)
-                      setTIdx((i) => Math.max(0, i - 1))
-                  },
-                }
-              : {})}
-            className={`mt-8 touch-pan-y rounded-lg border border-border bg-card p-6 shadow-sm sm:p-10 ${
-              isTouch ? 'cursor-grab active:cursor-grabbing' : ''
-            }`}
-          >
-            <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">
-              {cur.title}
-            </h3>
-            <div className="mt-8 grid gap-6 sm:grid-cols-3 sm:gap-8">
-              {[
-                { k: '문제', v: cur.problem, dot: 'bg-danger' },
-                { k: '해결', v: cur.solution, dot: 'bg-info' },
-                { k: '결과', v: cur.result, dot: 'bg-success' },
-              ].map((col) => (
-                <div key={col.k}>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium tracking-widest text-secondary-foreground">
-                    <span className={`h-1.5 w-1.5 rounded-full ${col.dot}`} aria-hidden="true" />
-                    {col.k}
-                  </span>
-                  <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-                    {emphasize(col.v)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </motion.article>
+          {/* 같은 그리드 셀에 전 항목의 보이지 않는 사본을 겹쳐 최대 높이를 점유 —
+              짧은 항목으로 전환해도 섹션 높이가 유지되어 아래(회고)가 딸려 올라오지 않는다 */}
+          <div className="mt-8 grid">
+            {ts.map((item, i) => (
+              <div
+                key={i}
+                aria-hidden="true"
+                className="invisible col-start-1 row-start-1 rounded-lg border p-6 sm:p-10"
+              >
+                <TsBody item={item} />
+              </div>
+            ))}
+            <motion.article
+              key={tIdx}
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              {...(isTouch
+                ? {
+                    drag: 'x' as const,
+                    dragConstraints: { left: 0, right: 0 },
+                    dragElastic: 0.1,
+                    onDragEnd: (_: unknown, info: PanInfo) => {
+                      if (info.offset.x < -70 || info.velocity.x < -400)
+                        setTIdx((i) => Math.min(ts.length - 1, i + 1))
+                      else if (info.offset.x > 70 || info.velocity.x > 400)
+                        setTIdx((i) => Math.max(0, i - 1))
+                    },
+                  }
+                : {})}
+              className={`col-start-1 row-start-1 touch-pan-y rounded-lg border border-border bg-card p-6 shadow-sm sm:p-10 ${
+                isTouch ? 'cursor-grab active:cursor-grabbing' : ''
+              }`}
+            >
+              <TsBody item={cur} />
+            </motion.article>
+          </div>
 
           {/* 점 인디케이터 */}
           <div className="mt-6 flex justify-center gap-2">
