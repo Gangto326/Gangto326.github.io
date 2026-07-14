@@ -91,6 +91,11 @@ export function ProjectDock({ currentId }: { currentId: string }) {
 
   const isExpanded = expanded || pinned
 
+  // 터치 탭은 pointerdown → (합성)mouseenter → click 순서라, click 시점엔 mouseenter가
+  // 이미 확장시킨 뒤다. '접힌 상태에서 시작된 터치 탭'을 pointerdown에 기록해 두고
+  // 그 탭의 click은 내비게이션 대신 확장만 하도록 막는다.
+  const tapExpandRef = useRef(false)
+
   return (
     <motion.div
       ref={rootRef}
@@ -99,6 +104,9 @@ export function ProjectDock({ currentId }: { currentId: string }) {
       animate={{ y: hidden && !pinned ? 110 : 0 }}
       transition={{ duration: 0.28, ease: 'easeInOut' }}
       className="fixed bottom-5 left-1/2 z-40 hidden md:block"
+      onPointerDownCapture={(e) => {
+        tapExpandRef.current = e.pointerType !== 'mouse' && !isExpanded
+      }}
       onMouseEnter={() => setExpanded(true)}
       onMouseLeave={collapse}
       onFocus={() => setExpanded(true)}
@@ -114,6 +122,7 @@ export function ProjectDock({ currentId }: { currentId: string }) {
         style={{ padding: isExpanded ? '10px 16px' : '8px 12px' }}
         onClick={() => {
           if (!isExpanded) setExpanded(true)
+          tapExpandRef.current = false // Link 처리 후 잔존 플래그 정리(버블 단계)
         }}
       >
         {/* 현재 위치 라벨 — 접힘 상태의 정체성. 확장 시엔 타일이 말하므로 숨김 */}
@@ -145,9 +154,10 @@ export function ProjectDock({ currentId }: { currentId: string }) {
                   onFocus={() => setHoverTile(p.id)}
                   onBlur={() => setHoverTile(null)}
                   onClick={(e) => {
-                    // 접힘 상태의 첫 탭/클릭은 내비게이션 대신 확장 — 호버 없는 터치 대응
-                    if (!isExpanded) {
+                    // 접힘 상태에서 시작된 탭/클릭은 내비게이션 대신 확장 — 호버 없는 터치 대응
+                    if (tapExpandRef.current || !isExpanded) {
                       e.preventDefault()
+                      tapExpandRef.current = false
                       setExpanded(true)
                       return
                     }
