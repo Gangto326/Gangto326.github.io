@@ -45,7 +45,7 @@ const METRICS: Metric[] = [
 
 export function BulkheadDemo() {
   const [mode, setMode] = useState<Mode>('off')
-  const [n, setN] = useState(3)
+  const [n, setN] = useState(1)
   const [overload, setOverload] = useState(false)
 
   const on = mode === 'on'
@@ -66,11 +66,6 @@ export function BulkheadDemo() {
   // 버튼 클릭으로 구조가 바뀌면 데모 상단으로 스크롤해 상태 배너·풀 구조가 화면에 보이게 한다
   const scrollTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-  const reset = () => {
-    setMode('off')
-    setN(3)
-    setOverload(false)
-  }
   const selectMode = (m: Mode) => {
     setMode(m)
     if (m === 'off') setOverload(false)
@@ -85,8 +80,12 @@ export function BulkheadDemo() {
     <ExperienceShell
       title="쓰레드풀 고갈 Bulkhead 시뮬레이터"
       subtitle="이미지 처리·DB 저장·검색·유튜브 폴링이 한 서버에서 돕니다. Bulkhead를 켜고 꺼서, 블로킹 작업이 공유 풀을 점유해 검색까지 멈추는 문제와 풀을 격리해 서로 보호하는 개선을 비교하세요."
-      hint="크롤링은 양쪽 모두 경량·논블로킹(WebClient → FastAPI)이라 스레드를 붙잡지 않습니다. 차이는 '블로킹 작업의 스레드풀 격리' 하나뿐입니다. OFF는 이미지 처리·DB 저장 같은 블로킹 작업이 하나의 공유 풀(ForkJoinPool.commonPool, 2vCPU→3슬롯)을 함께 써서, 동시 3~4건이면 슬롯이 차 검색·메인페이지까지 연쇄 정지합니다. ON은 작업마다 전용 격리 풀(이미지 처리·DB 저장·검색 쿼리·유튜브 폴링)로 나눠, 검색은 전용 fixed:10 풀에서 항상 정상 응답하고, 이미지 처리 풀 큐가 차면 무한 대기 대신 즉시 503+FCM으로 실패(fail-fast)합니다. 수치는 실측값(CPU 5.2→1.21%, 부하 시 Live Thread 증가 +25→+6개, 검색 무중단)."
-      onReset={reset}
+      hint={[
+        "OFF·ON의 차이는 '블로킹 작업의 스레드풀 격리' 하나뿐 — 크롤링은 양쪽 모두 논블로킹(WebClient→FastAPI)이라 스레드를 붙잡지 않습니다.",
+        'OFF: 블로킹 작업이 공유 풀(commonPool, 3슬롯)을 점유해 동시 3~4건이면 검색·메인페이지까지 연쇄 정지합니다.',
+        'ON: 워크로드별 전용 풀로 격리 — 검색은 항상 정상 응답하고, 큐가 차면 무한 대기 대신 즉시 503+FCM으로 실패(fail-fast)합니다.',
+        '수치는 실측값: CPU 피크 5.2%→1.21%, 부하 시 스레드 증가 +25개→+6개, 검색 무중단.',
+      ]}
     >
       {/* 모드 토글 + 슬라이더 · 클릭 시 이 지점이 상단으로 */}
       <div ref={topRef} style={{ scrollMarginTop: 80 }} className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center">

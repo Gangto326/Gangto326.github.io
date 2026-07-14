@@ -4,8 +4,8 @@ import { RotateCcw } from 'lucide-react'
 interface ExperienceShellProps {
   title: string
   subtitle?: string
-  /** 조작 안내 (하단에 표시) */
-  hint?: string
+  /** 조작 안내 (하단에 표시) — 배열이면 점(•) 리스트로 렌더링 */
+  hint?: string | string[]
   /** 리셋 버튼 핸들러 (없으면 버튼 숨김) */
   onReset?: () => void
   children: ReactNode
@@ -50,9 +50,17 @@ export function ExperienceShell({
       <div>{children}</div>
 
       {hint && (
-        <p className="mt-5 border-t border-black/5 pt-4 text-xs leading-relaxed text-gray-400">
-          {hint}
-        </p>
+        <div className="mt-5 border-t border-black/5 pt-4 text-xs leading-relaxed text-gray-400">
+          {Array.isArray(hint) ? (
+            <ul className="list-disc space-y-1.5 pl-4">
+              {hint.map((h, i) => (
+                <li key={i}>{h}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>{hint}</p>
+          )}
+        </div>
       )}
     </div>
   )
