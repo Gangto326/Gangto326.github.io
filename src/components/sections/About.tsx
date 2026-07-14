@@ -4,15 +4,15 @@ import { profile } from '@/data/profile'
 
 export function About() {
   return (
-    <section id="about" className="scroll-mt-20 border-t border-border bg-background py-24 sm:py-32">
+    <section id="about" className="hairline-t scroll-mt-20 bg-background py-24 sm:py-32">
       <Container>
         <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <p className="mb-3 flex items-center gap-3 text-xs font-medium tracking-widest text-muted-foreground">
-              <span className="h-px w-8 bg-foreground/30" aria-hidden="true" />
+              <span className="h-px w-8 bg-foreground/30 dark:bg-glow/60" aria-hidden="true" />
               WHO I AM
             </p>
-            <h2 className="text-4xl font-semibold tracking-tighter sm:text-5xl">
+            <h2 className="heading-sheen text-4xl font-semibold tracking-tighter sm:text-5xl">
               ABOUT
             </h2>
             <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
@@ -63,8 +63,13 @@ export function About() {
               </p>
               <ul className="divide-y divide-border border-t border-border">
                 {profile.awards.map((a, i) => (
-                  <li key={i} className="flex items-baseline gap-4 py-3 text-sm">
-                    <span className="w-12 shrink-0 tabular-nums text-muted-foreground">{a.year}</span>
+                  <li
+                    key={i}
+                    className="group flex items-baseline gap-4 py-3 text-sm transition-colors hover:bg-secondary/40"
+                  >
+                    <span className="w-12 shrink-0 tabular-nums text-muted-foreground transition-colors group-hover:text-foreground">
+                      {a.year}
+                    </span>
                     <span className="text-foreground">{a.title}</span>
                   </li>
                 ))}
