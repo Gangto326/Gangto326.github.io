@@ -71,7 +71,7 @@ export const projects: Project[] = [
     role: 'Backend · DB · 기획',
     meta: '2025 · 6주 · 6인 · 우수상 1등',
     stack: ['Spring Boot', 'Elasticsearch', 'Redis', 'FastAPI', 'Ollama'],
-    highlight: 'Bulkhead 격리로 동시처리 3→10건 · ES-PG 정합성 보장',
+    highlight: 'Bulkhead 격리로 장애 전파 차단 · ES-PG 정합성 보장',
     experience: '쓰레드풀 Bulkhead 시뮬레이터',
     github: 'https://github.com/Gangto326/MODA',
     accent: 'from-rose-400 via-pink-300 to-orange-200',
