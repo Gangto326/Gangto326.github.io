@@ -236,8 +236,36 @@
       0 0 0 1px rgba(0, 0, 0, 0.18),
       0 2px 6px rgba(0, 0, 0, 0.25);
   }
-  /* 주의: 데모의 슬라이더는 항상 흰색 ExperienceShell 카드 위에 놓이므로
-     다크모드에서도 위 라이트 스타일(검정 트랙·썸)이 정답이다 — 다크 오버라이드 금지 */
+  /* 다크: ExperienceShell 카드가 다크 서피스가 되므로 트랙·썸을 반전 —
+     밝은 썸 + 카드색 테두리로 어두운 배경에서도 또렷하게 */
+  .dark input[type='range']::-webkit-slider-runnable-track {
+    background: rgba(255, 255, 255, 0.22);
+  }
+  .dark input[type='range']::-webkit-slider-thumb {
+    background: #e8edf3;
+    border-color: hsl(210 20% 10%);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.28),
+      0 2px 6px rgba(0, 0, 0, 0.55);
+  }
+  .dark input[type='range']:focus-visible::-webkit-slider-thumb {
+    box-shadow:
+      0 0 0 3px rgba(255, 255, 255, 0.35),
+      0 2px 6px rgba(0, 0, 0, 0.55);
+  }
+  .dark input[type='range']::-moz-range-track {
+    background: rgba(255, 255, 255, 0.22);
+  }
+  .dark input[type='range']::-moz-range-progress {
+    background: #e8edf3;
+  }
+  .dark input[type='range']::-moz-range-thumb {
+    background: #e8edf3;
+    border-color: hsl(210 20% 10%);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.28),
+      0 2px 6px rgba(0, 0, 0, 0.55);
+  }
 }
 
 /* 모션 최소화 선호 시 부드러운 스크롤·애니메이션 억제 */

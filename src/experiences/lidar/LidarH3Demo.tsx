@@ -128,7 +128,9 @@ export function LidarH3Demo() {
             key={v.k}
             onClick={() => selectView(v.k)}
             className={`rounded-full px-4 py-2 text-sm transition-colors ${
-              view === v.k ? 'bg-black text-white' : 'border border-black/15 text-gray-600 hover:border-black'
+              view === v.k
+                ? 'bg-black text-white dark:bg-white dark:text-black'
+                : 'border border-black/15 text-gray-600 hover:border-black dark:border-white/20 dark:text-gray-300 dark:hover:border-white'
             }`}
           >
             {v.label}
@@ -139,7 +141,7 @@ export function LidarH3Demo() {
       {view === 'maps' ? (
         <div>
           {/* 슬라이더 위로 (인터랙티브와 동일 위치) */}
-          <div className="mb-4 flex items-center gap-3 text-sm text-gray-500">
+          <div className="mb-4 flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
             <span className="shrink-0">보간 (표시용)</span>
             <input
               type="range"
@@ -155,7 +157,7 @@ export function LidarH3Demo() {
           </div>
           {/* crossfade — 인터랙티브와 동일한 크기(aspect 460/300) */}
           <div
-            className="relative w-full overflow-hidden rounded-2xl bg-[#0b0d12]"
+            className="relative w-full overflow-hidden rounded-2xl border border-black/10 bg-[#0b0d12] dark:border-white/10"
             style={{ aspectRatio: '460 / 300' }}
           >
             <img
@@ -174,9 +176,9 @@ export function LidarH3Demo() {
               {fade < 0.5 ? '보간 지도 · 사용자 표시용' : 'H3 집계 · 실제 저장 데이터'}
             </span>
           </div>
-          <p className="mt-3 text-sm leading-relaxed text-gray-600">
-            <strong className="font-semibold text-gray-900">보간 지도</strong>는 사용자에게 보여주는 미세먼지 지도이고,{' '}
-            <strong className="font-semibold text-gray-900">H3 히트맵</strong>은 실제 DB에 저장되는 데이터입니다.
+          <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+            <strong className="font-semibold text-gray-900 dark:text-gray-100">보간 지도</strong>는 사용자에게 보여주는 미세먼지 지도이고,{' '}
+            <strong className="font-semibold text-gray-900 dark:text-gray-100">H3 히트맵</strong>은 실제 DB에 저장되는 데이터입니다.
             H3 해상도는 고객사 구역 통계의 넓이에 맞춰 선정했습니다. 슬라이더로 두 부채꼴을 겹쳐,
             매끄러운 표시용 지도가 저장용 육각 셀로 이산화되는 과정을 비교해 보세요.
           </p>
@@ -186,7 +188,7 @@ export function LidarH3Demo() {
       {/* 컨트롤 — 원천 ↔ H3 집계 슬라이더 */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex flex-1 items-center gap-3 text-sm">
-          <span className="shrink-0 text-gray-500">원천 점</span>
+          <span className="shrink-0 text-gray-500 dark:text-gray-400">원천 점</span>
           <input
             type="range"
             min={0}
@@ -197,10 +199,10 @@ export function LidarH3Demo() {
             className="flex-1 accent-black"
             aria-label="원천 측정점 ↔ H3 셀 집계"
           />
-          <span className="shrink-0 text-gray-500">H3 집계</span>
+          <span className="shrink-0 text-gray-500 dark:text-gray-400">H3 집계</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-gray-500">해상도</span>
+          <span className="text-gray-500 dark:text-gray-400">해상도</span>
           <input
             type="range"
             min={9}
@@ -211,12 +213,12 @@ export function LidarH3Demo() {
             className="w-24 accent-black"
             aria-label="H3 해상도"
           />
-          <span className="w-16 tabular-nums text-gray-700">Level {res}</span>
+          <span className="w-16 tabular-nums text-gray-700 dark:text-gray-200">Level {res}</span>
         </div>
       </div>
 
       {/* 시각화 */}
-      <div className="overflow-hidden rounded-2xl border border-black/10 bg-[#0b0d12]">
+      <div className="overflow-hidden rounded-2xl border border-black/10 bg-[#0b0d12] dark:border-white/10">
         <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full">
           {POINTS.map((p, i) => (
             <circle key={i} cx={p.x} cy={p.y} r={1.4} fill={pmColor(p.pm)} opacity={0.85 - slide * 0.72} />
@@ -237,30 +239,30 @@ export function LidarH3Demo() {
 
       {/* 카운터 */}
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl bg-gray-50 p-4">
+        <div className="rounded-xl bg-gray-50 p-4 dark:bg-white/5">
           <p className="text-xs tracking-widest text-gray-400">원천 측정 (15분)</p>
           <p className="mt-1 text-2xl font-light tabular-nums">
             {RAW_ROWS.toLocaleString()}
             <span className="ml-1 text-sm text-gray-400">행</span>
           </p>
         </div>
-        <div className="rounded-xl bg-gray-50 p-4">
+        <div className="rounded-xl bg-gray-50 p-4 dark:bg-white/5">
           <p className="text-xs tracking-widest text-gray-400">H3 셀 (Level {res})</p>
           <p className="mt-1 text-2xl font-light tabular-nums">
             {real.cells.toLocaleString()}
             <span className="ml-1 text-sm text-gray-400">셀</span>
           </p>
         </div>
-        <div className="rounded-xl bg-emerald-50 p-4">
-          <p className="text-xs tracking-widest text-emerald-600/70">저장 압축률</p>
-          <p className="mt-1 text-2xl font-light tabular-nums text-emerald-600">
+        <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950/40">
+          <p className="text-xs tracking-widest text-emerald-600/70 dark:text-emerald-400/70">저장 압축률</p>
+          <p className="mt-1 text-2xl font-light tabular-nums text-emerald-600 dark:text-emerald-400">
             −{real.pct}
             <span className="ml-1 text-sm">%</span>
           </p>
         </div>
       </div>
 
-      <p className="mt-3 text-sm leading-relaxed text-gray-600">
+      <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
         {slide < 0.5
           ? '15분마다 유입되는 약 10만 행의 실제 원천 측정점입니다. 이대로 저장하면 데드튜플·VACUUM 부하가 커집니다. 슬라이더를 오른쪽으로 밀어 H3 셀 집계를 확인하세요.'
           : `측정점을 Level ${res} 육각 셀로 묶어 셀당 평균·최대·샘플 수만 저장합니다. H3 해상도는 고객사 구역 통계의 넓이에 맞춰 선정했습니다. 해상도를 낮출수록(9로) 셀이 커지고 개수가 줄어 압축률이 높아집니다.`}

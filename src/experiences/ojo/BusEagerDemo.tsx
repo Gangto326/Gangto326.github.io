@@ -25,7 +25,7 @@ const GESTURE = 3.1
 const GAP = 0.2 // 제스처 인식 → 처리 시작 지연(현실성). 제스처 선에서 살짝 띄운다.
 const PROC_START = GESTURE + GAP // 3.3
 const ANNOUNCE_LAG = 0.1 // 재생 시작 → 음성이 실제로 들리기까지
-const BUS_DEPART = 6.5 // Lazy에서만 표시(버스가 출발하는 시점)
+const BUS_DEPART = 8.8 // Lazy에서만 표시 — 영상 종료(≈6.84s) 약 2초 뒤 버스가 출발
 // 타임라인 스케일: Eager는 짧게, Lazy는 긴 파이프라인(≈11s)이 다 보이도록 넓게
 const SCALE_E = 4.5
 const SCALE_L = 11.5
@@ -138,8 +138,8 @@ export function BusEagerDemo() {
             onClick={() => selectMode(m.k)}
             className={`rounded-full px-4 py-2 text-sm transition-colors ${
               mode === m.k && view === 'demo'
-                ? 'bg-black text-white'
-                : 'border border-black/15 text-gray-600 hover:border-black'
+                ? 'bg-black text-white dark:bg-white dark:text-black'
+                : 'border border-black/15 text-gray-600 hover:border-black dark:border-white/20 dark:text-gray-300 dark:hover:border-white'
             }`}
           >
             {m.label}
@@ -149,8 +149,8 @@ export function BusEagerDemo() {
           onClick={toggleView}
           className={`ml-auto inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm transition-colors ${
             view === 'diagram'
-              ? 'bg-black text-white'
-              : 'border border-black/15 text-gray-600 hover:border-black hover:text-black'
+              ? 'bg-black text-white dark:bg-white dark:text-black'
+              : 'border border-black/15 text-gray-600 hover:border-black hover:text-black dark:border-white/20 dark:text-gray-300 dark:hover:border-white dark:hover:text-white'
           }`}
         >
           <Network className="h-4 w-4" />
@@ -159,7 +159,8 @@ export function BusEagerDemo() {
       </div>
 
       {view === 'diagram' ? (
-        <div className="rounded-2xl border border-black/10 bg-white p-3 sm:p-4">
+        // 다이어그램 PNG는 라이트 튜닝 — 다크에서도 흰 서피스 유지
+        <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 sm:p-4">
           <img
             src={SEQ}
             alt="버스 번호 인식 Pre-fetching 시퀀스 다이어그램"
@@ -228,7 +229,7 @@ export function BusEagerDemo() {
           <div className="mt-4 flex items-center gap-3">
             <button
               onClick={togglePlay}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm text-white"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black"
             >
               {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               {playing ? '일시정지' : '재생'}
@@ -251,9 +252,9 @@ export function BusEagerDemo() {
               <div className="w-36 shrink-0">
                 {lanes.map((l) => (
                   <div key={l.key} style={{ height: ROW }} className="flex flex-col justify-center overflow-hidden pr-3 text-right">
-                    <span className="truncate text-xs text-gray-700">
+                    <span className="truncate text-xs text-gray-700 dark:text-gray-200">
                       {l.label}
-                      {l.extra && <span className="ml-1 align-middle text-[9px] text-sky-500">+Eager</span>}
+                      {l.extra && <span className="ml-1 align-middle text-[9px] text-sky-500 dark:text-sky-400">+Eager</span>}
                     </span>
                     <span className="truncate text-[10px] text-gray-400">{l.sub}</span>
                   </div>
@@ -272,7 +273,7 @@ export function BusEagerDemo() {
                     <div key={l.key} className="absolute inset-x-0" style={{ top: i * ROW, height: ROW }}>
                       <div className="relative top-1/2 h-6 -translate-y-1/2">
                         <div
-                          className="absolute h-full rounded-md opacity-20"
+                          className="absolute h-full rounded-md opacity-20 dark:opacity-30"
                           style={{ left: `${left}%`, width: `${right - left}%`, background: l.color }}
                         />
                         <div
@@ -293,8 +294,8 @@ export function BusEagerDemo() {
 
                 {/* 제스처 마커 */}
                 <div className="absolute inset-y-0 z-20" style={{ left: `${x(GESTURE)}%` }}>
-                  <div className="h-full border-l-2 border-black" />
-                  <span className="absolute -top-0.5 left-1 whitespace-nowrap rounded bg-black px-1.5 py-0.5 text-[10px] text-white">
+                  <div className="h-full border-l-2 border-black dark:border-white" />
+                  <span className="absolute -top-0.5 left-1 whitespace-nowrap rounded bg-black px-1.5 py-0.5 text-[10px] text-white dark:bg-white dark:text-black">
                     ✊ 제스처
                   </span>
                 </div>
@@ -310,19 +311,19 @@ export function BusEagerDemo() {
                 )}
 
                 {/* 재생 헤드 */}
-                <div className="absolute inset-y-0 z-30 w-px bg-black/70" style={{ left: `${x(t)}%` }}>
-                  <div className="absolute -top-1 -left-[3px] h-2 w-2 rounded-full bg-black" />
+                <div className="absolute inset-y-0 z-30 w-px bg-black/70 dark:bg-white/70" style={{ left: `${x(t)}%` }}>
+                  <div className="absolute -top-1 -left-[3px] h-2 w-2 rounded-full bg-black dark:bg-white" />
                 </div>
               </div>
             </div>
           </div>
 
           {/* 준비/대기 비교 + 결과 (한 카드) */}
-          <div className="mt-5 rounded-xl border border-black/10 p-4">
+          <div className="mt-5 rounded-xl border border-black/10 p-4 dark:border-white/10">
             <div className="flex flex-wrap gap-x-10 gap-y-2">
               <div>
                 <span className="text-xs tracking-widest text-gray-400">TTS 준비</span>
-                <p className={`text-lg font-light tabular-nums ${lead >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                <p className={`text-lg font-light tabular-nums ${lead >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
                   {Math.abs(lead).toFixed(1)}s
                   <span className="ml-2 text-xs font-normal text-gray-400">
                     {lead >= 0 ? '제스처 전 준비 완료' : '제스처 후에도 생성 중'}
@@ -331,16 +332,16 @@ export function BusEagerDemo() {
               </div>
               <div>
                 <span className="text-xs tracking-widest text-gray-400">안내까지 대기(체감)</span>
-                <p className={`text-lg font-light tabular-nums ${caught ? 'text-emerald-600' : 'text-rose-500'}`}>
+                <p className={`text-lg font-light tabular-nums ${caught ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
                   {(deliverAt - GESTURE).toFixed(1)}s
                   <span className="ml-2 text-xs font-normal text-gray-400">제스처 → 안내 청취</span>
                 </p>
               </div>
             </div>
 
-            <div className="mt-3 border-t border-black/5 pt-3 text-sm">
+            <div className="mt-3 border-t border-black/5 pt-3 text-sm dark:border-white/10">
               {t < GESTURE ? (
-                <p className="flex items-center gap-2 text-gray-500">
+                <p className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   {mode === 'eager' ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" /> 이벤트 트리거로 선제 처리 중 — 제스처 전에 결과를 준비합니다.
@@ -350,11 +351,14 @@ export function BusEagerDemo() {
                   )}
                 </p>
               ) : delivered && caught ? (
-                <p className="text-emerald-600">🔊 {BUS_NO}번 버스입니다 — 제스처 즉시 음성 안내, 탑승 성공</p>
-              ) : mode === 'lazy' && t >= BUS_DEPART ? (
-                <p className="text-rose-500">🚌 버스 출발 — 아직 처리 중이라 안내가 도착하지 못했습니다</p>
+                <p className="text-emerald-600 dark:text-emerald-400">🔊 {BUS_NO}번 버스입니다 — 제스처 즉시 음성 안내, 탑승 성공</p>
+              ) : mode === 'lazy' && t >= duration - 0.1 ? (
+                // 버스 출발(8.8s)은 영상 종료 뒤 — 영상이 끝나면 임박 경고로 전환
+                <p className="text-rose-500 dark:text-rose-400">
+                  🚌 약 2초 뒤 버스 출발 — 아직 TTS 생성 중이라 안내가 도착하지 못합니다
+                </p>
               ) : (
-                <p className="flex items-center gap-2 text-gray-500">
+                <p className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <Loader2 className="h-4 w-4 animate-spin" /> 제스처 이후 처리 중…
                 </p>
               )}
