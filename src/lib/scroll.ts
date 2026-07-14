@@ -6,6 +6,11 @@ const HEADER_OFFSET = 88
  * 이미지·영상·지연 로드(Suspense) 데모가 뒤늦게 마운트되며 높이가 바뀌어도
  * 목표 위치를 재계산해 몇 차례 보정하여 정확히 안착시킨다.
  */
+/** 페이지 최상단으로 부드럽게 스크롤 (id 요소 유무와 무관하게 동작) */
+export function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 export function scrollToId(id: string) {
   const el = document.getElementById(id)
   if (!el) return

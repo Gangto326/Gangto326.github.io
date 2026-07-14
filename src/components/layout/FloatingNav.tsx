@@ -13,23 +13,36 @@ export interface FloatingNavItem {
 export function FloatingNav({ items }: { items: FloatingNavItem[] }) {
   const [active, setActive] = useState<string | null>(items[0]?.id ?? null)
 
+  // 스크롤 기준선 방식: 뷰포트 상단 40% 선을 지난 마지막 섹션을 활성으로.
+  // (IntersectionObserver의 좁은 판정 밴드는 뷰포트보다 긴 섹션·빠른 휠에서
+  //  기능·회고를 놓치는 문제가 있어 스크롤 위치 계산으로 교체)
   useEffect(() => {
-    const els = items
-      .map((it) => document.getElementById(it.id))
-      .filter((el): el is HTMLElement => !!el)
-    if (!els.length) return
-
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
-        if (visible[0]) setActive(visible[0].target.id)
-      },
-      { rootMargin: '-35% 0px -55% 0px', threshold: [0, 0.25, 0.5, 1] },
-    )
-    els.forEach((el) => obs.observe(el))
-    return () => obs.disconnect()
+    let raf = 0
+    const update = () => {
+      raf = 0
+      const line = window.innerHeight * 0.4
+      // 페이지 끝에 닿으면 마지막 섹션을 활성 (짧은 마지막 섹션도 도달 가능하게)
+      const atBottom =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
+      let current: string | null = null
+      for (const it of items) {
+        const el = document.getElementById(it.id)
+        if (el && el.getBoundingClientRect().top <= line) current = it.id
+      }
+      if (atBottom) current = items[items.length - 1]?.id ?? current
+      setActive(current ?? items[0]?.id ?? null)
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
   }, [items])
 
   return (
