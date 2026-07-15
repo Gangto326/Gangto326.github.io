@@ -2,12 +2,59 @@
 const HEADER_OFFSET = 88
 
 /**
- * 지정 id 요소로 부드럽게 스크롤한다.
- * 이미지·영상·지연 로드(Suspense) 데모가 뒤늦게 마운트되며 높이가 바뀌어도
- * 목표 위치를 재계산해 몇 차례 보정하여 정확히 안착시킨다.
+ * 진행 중인 프로그램 스크롤(보정 루프)은 페이지 전체에서 항상 하나 —
+ * 새 프로그램 스크롤이 시작되거나 사용자 입력이 감지되면 이전 루프를 즉시 취소한다.
+ * (목차 연타·클릭 직후 역방향 휠에서 여러 보정 루프가 서로 싸우며
+ *  페이지가 널뛰던 문제의 근본 수정)
  */
+let activeCleanup: (() => void) | null = null
+
+/** 진행 중인 보정 루프를 취소한다. 라우트 전환 등 외부에서도 호출 가능. */
+export function cancelManagedScroll() {
+  activeCleanup?.()
+  activeCleanup = null
+}
+
+const USER_EVENTS = ['wheel', 'touchstart', 'mousedown', 'keydown'] as const
+
+/**
+ * 목표 위치로 부드럽게 스크롤하고, 지연 로드(이미지·영상·Suspense 데모)로
+ * 레이아웃이 밀리면 350ms 간격으로 최대 tries회 재보정한다.
+ * targetY가 null을 반환하면(예: 목표 요소가 DOM에서 분리됨) 즉시 중단하고,
+ * 휠·터치·키 입력 등 사용자 조작이 감지되면 그 즉시 양보한다.
+ */
+function managedScrollTo(targetY: () => number | null, tries: number) {
+  cancelManagedScroll()
+
+  const step = (): boolean => {
+    const t = targetY()
+    if (t == null) return false
+    if (Math.abs(t - window.scrollY) > 4) {
+      window.scrollTo({ top: t, behavior: 'smooth' })
+    }
+    return true
+  }
+
+  if (!step()) return
+
+  let left = tries
+  const timer = window.setInterval(() => {
+    if (!step() || --left <= 0) cancelManagedScroll()
+  }, 350)
+
+  const onUserInput = () => cancelManagedScroll()
+  USER_EVENTS.forEach((e) =>
+    window.addEventListener(e, onUserInput, { passive: true, capture: true }),
+  )
+  activeCleanup = () => {
+    window.clearInterval(timer)
+    USER_EVENTS.forEach((e) => window.removeEventListener(e, onUserInput, { capture: true }))
+  }
+}
+
 /** 페이지 최상단으로 부드럽게 스크롤 (id 요소 유무와 무관하게 동작) */
 export function scrollToTop() {
+  cancelManagedScroll()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -34,7 +81,8 @@ export function scrollDemoIntoView(anchor: HTMLElement | null) {
   const card = (anchor.closest('[data-experience-card]') as HTMLElement) ?? anchor
   const body = (card.querySelector('[data-experience-body]') as HTMLElement) ?? card
 
-  const targetY = () => {
+  const targetY = (): number | null => {
+    if (!body.isConnected) return null
     const b = body.getBoundingClientRect()
     const vh = window.innerHeight
     // 본체가 담기면(하단 16px 여유 포함) 중앙 정렬, 내비보다는 아래로. 안 담기면 내비 바로 아래.
@@ -56,17 +104,9 @@ export function scrollDemoIntoView(anchor: HTMLElement | null) {
   // 십수 px 보정(본체 하단 잘림 완화)은 놓치지 않게 좁게 잡는다.
   requestAnimationFrame(() => {
     const t = targetY()
-    if (Math.abs(t - window.scrollY) <= 4) return
-    window.scrollTo({ top: t, behavior: 'smooth' })
+    if (t == null || Math.abs(t - window.scrollY) <= 4) return
     // 지연 로드(영상·이미지)로 높이가 밀리면 재보정 (최대 2회)
-    let tries = 0
-    const timer = window.setInterval(() => {
-      const t2 = targetY()
-      if (Math.abs(t2 - window.scrollY) > 4) {
-        window.scrollTo({ top: t2, behavior: 'smooth' })
-      }
-      if (++tries >= 2) window.clearInterval(timer)
-    }, 350)
+    managedScrollTo(targetY, 2)
   })
 }
 
@@ -74,18 +114,12 @@ export function scrollToId(id: string) {
   const el = document.getElementById(id)
   if (!el) return
 
-  const targetY = () =>
-    Math.max(0, el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET)
-
-  window.scrollTo({ top: targetY(), behavior: 'smooth' })
+  // 요소가 DOM에서 분리되면(프로젝트 전환 등) 보정을 즉시 중단한다
+  const targetY = (): number | null =>
+    el.isConnected
+      ? Math.max(0, el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET)
+      : null
 
   // 지연 로드로 위치가 밀리면 보정(레이아웃 안정될 때까지 최대 4회)
-  let tries = 0
-  const timer = window.setInterval(() => {
-    const t = targetY()
-    if (Math.abs(t - window.scrollY) > 4) {
-      window.scrollTo({ top: t, behavior: 'smooth' })
-    }
-    if (++tries >= 4) window.clearInterval(timer)
-  }, 350)
+  managedScrollTo(targetY, 4)
 }
