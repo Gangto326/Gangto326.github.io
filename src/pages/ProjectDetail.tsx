@@ -96,26 +96,29 @@ function ImagePlaceholder({ className = '' }: { className?: string }) {
   )
 }
 
-/** 이미지 시퀀스 — 지정 간격(기본 2초)마다 순서대로 crossfade 순환 */
+/** 이미지 시퀀스 — 지정 간격(기본 2초)마다 순서대로 crossfade 순환.
+    active=false(비활성 슬라이드)면 순환을 멈춰 화면 밖 렌더 비용을 없앤다. */
 function FeatureSequence({
   srcs,
   interval = 2000,
   ratio,
   order,
   stage = false,
+  active = true,
 }: {
   srcs: string[]
   interval?: number
   ratio?: string
   order: string
   stage?: boolean
+  active?: boolean
 }) {
   const [idx, setIdx] = useState(0)
   useEffect(() => {
-    if (srcs.length < 2) return
+    if (!active || srcs.length < 2) return
     const id = setInterval(() => setIdx((i) => (i + 1) % srcs.length), interval)
     return () => clearInterval(id)
-  }, [srcs.length, interval])
+  }, [active, srcs.length, interval])
   const r = ratio ?? '16 / 9'
   return (
     <div
@@ -152,11 +155,35 @@ function FeatureSequence({
   )
 }
 
+/** 활성 슬라이드에서만 재생되는 무음 루프 비디오 — 화면 밖 슬라이드까지 전부
+    자동재생되어 디코딩 부하로 슬라이드 전환이 버벅거리던 문제를 막는다. */
+function AutoVideo({ src, className, active }: { src: string; className?: string; active: boolean }) {
+  const ref = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    const v = ref.current
+    if (!v) return
+    if (active) v.play().catch(() => {})
+    else v.pause()
+  }, [active])
+  return <video ref={ref} src={src} muted loop playsInline preload="metadata" className={className} />
+}
+
 /**
  * 기능 미디어 — 영상(자동재생·무음), 이미지 시퀀스(2초 순환), 단일 이미지, 없으면 자리표시.
  * stage: lg에서 고정 높이 스테이지(부모 lg:h-[440px] flex) 안에 맞춰 비율 유지 축소.
+ * active: 캐러셀 활성 슬라이드 여부 — 비활성이면 영상·시퀀스 순환을 정지.
  */
-function FeatureMedia({ media, order, stage = false }: { media?: FeatureMediaType; order: string; stage?: boolean }) {
+function FeatureMedia({
+  media,
+  order,
+  stage = false,
+  active = true,
+}: {
+  media?: FeatureMediaType
+  order: string
+  stage?: boolean
+  active?: boolean
+}) {
   const base = import.meta.env.BASE_URL
   if (!media) return <ImagePlaceholder className={`aspect-video w-full ${order}`} />
   if (media.kind === 'video') {
@@ -164,15 +191,7 @@ function FeatureMedia({ media, order, stage = false }: { media?: FeatureMediaTyp
       <div
         className={`aspect-video w-full overflow-hidden rounded-lg bg-muted ${stage ? 'lg:max-h-full' : ''} ${order}`}
       >
-        <video
-          src={base + media.src}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          className="h-full w-full object-contain"
-        />
+        <AutoVideo src={base + media.src} active={active} className="h-full w-full object-contain" />
       </div>
     )
   }
@@ -184,6 +203,7 @@ function FeatureMedia({ media, order, stage = false }: { media?: FeatureMediaTyp
         ratio={media.ratio}
         order={order}
         stage={stage}
+        active={active}
       />
     )
   }
@@ -200,9 +220,9 @@ function FeatureMedia({ media, order, stage = false }: { media?: FeatureMediaTyp
           const cls = `min-w-0 flex-1 rounded-lg border border-border bg-muted ${
             stage ? 'lg:h-auto lg:max-h-full lg:w-auto lg:flex-initial' : ''
           }`
-          // mp4 몽타주는 GIF 대체물 — 자동재생·무한루프·무음으로 GIF와 동일하게 보이게
+          // mp4 몽타주는 GIF 대체물 — 무한루프·무음으로 GIF와 동일하게 보이게
           return s.endsWith('.mp4') ? (
-            <video key={s} src={base + s} autoPlay muted loop playsInline className={cls} />
+            <AutoVideo key={s} src={base + s} active={active} className={cls} />
           ) : (
             <img key={s} src={base + s} alt="" className={cls} />
           )
@@ -235,29 +255,40 @@ function useIsTouch() {
 }
 
 /**
- * 요소 위에서 트랙패드·휠 가로 스와이프만으로 슬라이드를 넘기게 한다.
+ * 요소 위 가로 휠 스와이프로 항목을 넘긴다 — 트러블슈팅 섹션 전용
+ * (겹침 crossfade 구조라 캐러셀처럼 스크롤 스냅으로 바꿀 수 없다).
  * React onWheel은 passive라 preventDefault가 불가 — 네이티브 리스너로 등록해
  * 브라우저 뒤로가기 스와이프를 막는다. 수직 스크롤은 그대로 통과.
+ *
+ * 판정은 2단 임계값 히스테리시스만 사용 (델타 적산·비율·감쇠 추론은 세 차례
+ * 회귀의 원인이었으므로 금지):
+ *   발동: 잠금 해제 상태에서 단일 이벤트 |deltaX| ≥ 35 → 1회 스텝 후 잠금
+ *   해제: |deltaX| < 20 (관성 꼬리 감쇠) 또는 150ms 무입력, 또는 방향 반전
+ * 하한 20px는 연속 스와이프가 씹히는 시간을 최소화한 값 — 꼬리가 20px 밑으로
+ * 떨어진 직후부터 다음 스와이프가 먹힌다. 무입력 판정 150ms는 이벤트 전달
+ * 지터(부하 시 수십~백 ms)보다 길게 잡아 같은 스와이프 내 오발동을 막는 값.
+ * (아주 빠른 연타의 짧은 데드존은 의도된 제약: 이 섹션은 한 번에 한 항목씩)
  */
 function useWheelSlide(ref: RefObject<HTMLElement | null>, step: (dir: 1 | -1) => void) {
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    let acc = 0
     let locked = false
+    let lockedDir = 0
+    let lastT = 0
     const onWheel = (e: WheelEvent) => {
       if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return
       e.preventDefault()
-      if (locked) return
-      acc += e.deltaX
-      if (Math.abs(acc) > 60) {
-        step(acc > 0 ? 1 : -1)
-        acc = 0
+      const mag = Math.abs(e.deltaX)
+      const dir = e.deltaX > 0 ? 1 : -1
+      if (locked && (mag < 20 || e.timeStamp - lastT >= 150 || dir !== lockedDir)) {
+        locked = false
+      }
+      lastT = e.timeStamp
+      if (!locked && mag >= 35) {
+        step(dir)
         locked = true
-        window.setTimeout(() => {
-          locked = false
-          acc = 0
-        }, 550)
+        lockedDir = dir
       }
     }
     el.addEventListener('wheel', onWheel, { passive: false })
@@ -266,78 +297,86 @@ function useWheelSlide(ref: RefObject<HTMLElement | null>, step: (dir: 1 | -1) =
 }
 
 /**
- * 핵심 기능 슬라이드 쇼케이스.
- * 드래그(스와이프)로 넘기는 캐러셀 — 박스 없이 고스트 넘버 + 기울어진 미디어 +
- * 프로젝트 액센트 블롭으로 구성한 자유 레이아웃.
+ * 핵심 기능 슬라이드 쇼케이스 — 네이티브 스크롤 스냅 캐러셀.
+ * 제스처 물리는 전부 브라우저에 위임한다: scroll-snap-stop: always가
+ * "한 번의 스와이프는 세기와 무관하게 다음 슬라이드에서 반드시 멈춤"을 강제하고,
+ * 연속 스와이프는 OS의 제스처 추적으로 자연히 이어진다. 휠 델타 해석·drag·
+ * 스프링 transform 없음. 데스크톱 트랙패드와 터치 기기가 같은 코드로 동작한다.
  */
 function FeatureShowcase({ features, accent }: { features: Feature[]; accent: string }) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  // 현재 인덱스는 스크롤 위치에서 파생 — 카운터·점·버튼·미디어 재생이 모두 이 값 기준
   const [idx, setIdx] = useState(0)
-  const go = (n: number) => setIdx(Math.min(features.length - 1, Math.max(0, n)))
 
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const step = useCallback(
-    (dir: 1 | -1) => setIdx((i) => Math.min(features.length - 1, Math.max(0, i + dir))),
-    [features.length],
-  )
-  useWheelSlide(wrapRef, step)
-  const isTouch = useIsTouch()
+  useEffect(() => {
+    const el = trackRef.current
+    if (!el) return
+    let raf = 0
+    const onScroll = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        const w = el.clientWidth
+        if (w > 0) {
+          setIdx(Math.min(features.length - 1, Math.max(0, Math.round(el.scrollLeft / w))))
+        }
+      })
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [features.length])
+
+  // 버튼·점 → 해당 슬라이드로 네이티브 부드러운 스크롤 (스냅 지점과 목표가 일치)
+  const go = (n: number) => {
+    const el = trackRef.current
+    if (!el) return
+    const i = Math.min(features.length - 1, Math.max(0, n))
+    el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' })
+  }
 
   return (
-    <div ref={wrapRef} className="relative mt-6 sm:mt-8">
-      {/* 트랙 내부 버튼 포커스 시 브라우저가 overflow-hidden 컨테이너를 임의로
-          스크롤(scroll-into-view)해 슬라이드가 어긋나는 것을 방지 */}
+    <div className="relative mt-6 sm:mt-8">
       <div
-        className="overflow-hidden"
-        onScroll={(e) => {
-          e.currentTarget.scrollLeft = 0
-        }}
+        ref={trackRef}
+        className="scrollbar-none flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
+        aria-label="핵심 기능 슬라이드"
       >
-        <motion.div
-          className={`flex touch-pan-y select-none ${isTouch ? 'cursor-grab active:cursor-grabbing' : ''}`}
-          {...(isTouch
-            ? {
-                drag: 'x' as const,
-                dragConstraints: { left: 0, right: 0 },
-                dragElastic: 0.12,
-                onDragEnd: (_: unknown, info: PanInfo) => {
-                  if (info.offset.x < -70 || info.velocity.x < -400) go(idx + 1)
-                  else if (info.offset.x > 70 || info.velocity.x > 400) go(idx - 1)
-                },
-              }
-            : {})}
-          animate={{ x: `${-idx * 100}%` }}
-          transition={{ type: 'spring', stiffness: 260, damping: 34 }}
-        >
-          {features.map((f, i) => (
-            <div key={i} className="w-full shrink-0 px-1" aria-hidden={i !== idx}>
-              <div className="grid items-center gap-8 py-8 lg:grid-cols-[0.42fr_0.58fr] lg:gap-16">
-                <div className="order-2 min-w-0 lg:order-1">
-                  <span className="block select-none text-7xl font-extralight leading-none tracking-tighter text-foreground/10 sm:text-8xl">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <h3 className="-mt-4 text-2xl font-semibold tracking-tight sm:-mt-6 sm:text-3xl">
-                    {f.title}
-                  </h3>
-                  <p className="mt-4 max-w-md leading-relaxed text-muted-foreground">{f.desc}</p>
-                </div>
+        {features.map((f, i) => (
+          <div
+            key={i}
+            className="w-full shrink-0 snap-center snap-always px-1"
+            aria-hidden={i !== idx}
+          >
+            <div className="grid items-center gap-8 py-8 lg:grid-cols-[0.42fr_0.58fr] lg:gap-16">
+              <div className="order-2 min-w-0 lg:order-1">
+                <span className="block select-none text-7xl font-extralight leading-none tracking-tighter text-foreground/10 sm:text-8xl">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <h3 className="-mt-4 text-2xl font-semibold tracking-tight sm:-mt-6 sm:text-3xl">
+                  {f.title}
+                </h3>
+                <p className="mt-4 max-w-md leading-relaxed text-muted-foreground">{f.desc}</p>
+              </div>
 
-                <div className="relative order-1 min-w-0 lg:order-2">
-                  <div
-                    aria-hidden="true"
-                    className={`absolute inset-4 rounded-full bg-gradient-to-br ${accent} opacity-30 blur-3xl dark:opacity-15`}
-                  />
-                  <div
-                    className={`drop-shadow-lg transition-transform duration-300 lg:flex lg:h-[440px] lg:items-center lg:justify-center [&_img]:pointer-events-none [&_video]:pointer-events-none ${
-                      i % 2 === 1 ? 'lg:-rotate-1' : 'lg:rotate-1'
-                    }`}
-                  >
-                    <FeatureMedia media={f.media} order="" stage />
-                  </div>
+              <div className="relative order-1 min-w-0 lg:order-2">
+                <div
+                  aria-hidden="true"
+                  className={`absolute inset-4 rounded-full bg-gradient-to-br ${accent} opacity-30 blur-3xl dark:opacity-15`}
+                />
+                <div
+                  className={`drop-shadow-lg transition-transform duration-300 lg:flex lg:h-[440px] lg:items-center lg:justify-center [&_img]:pointer-events-none [&_video]:pointer-events-none ${
+                    i % 2 === 1 ? 'lg:-rotate-1' : 'lg:rotate-1'
+                  }`}
+                >
+                  <FeatureMedia media={f.media} order="" stage active={i === idx} />
                 </div>
               </div>
             </div>
-          ))}
-        </motion.div>
+          </div>
+        ))}
       </div>
 
       {/* 컨트롤 — 세그먼트 + 카운터 + 화살표 */}
