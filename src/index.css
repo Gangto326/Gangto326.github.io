@@ -78,12 +78,16 @@
   }
   html {
     scroll-behavior: smooth;
+    /* 트랙패드 가로 스와이프(캐러셀 조작)가 브라우저 히스토리 백/포워드
+       제스처로 새어 홈으로 튕기는 것을 차단 */
+    overscroll-behavior-x: none;
   }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-geist-sans);
     -webkit-font-smoothing: antialiased;
     word-break: keep-all; /* 한글 어절 단위 줄바꿈 */
+    overscroll-behavior-x: none;
   }
   ::selection {
     background: hsl(var(--foreground));
@@ -98,6 +102,16 @@
     pointer-events: none;
     opacity: 0.05;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+@layer utilities {
+  /* 스크롤 스냅 캐러셀용 — 스크롤바 숨김 (기능은 유지) */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 }
 
