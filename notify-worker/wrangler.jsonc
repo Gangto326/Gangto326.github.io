@@ -1,0 +1,6 @@
+{
+  // 방문 알림 Worker — 디스코드 웹훅 URL은 secret(DISCORD_WEBHOOK_URL)으로만 보관
+  "name": "portfolio-visit-notify",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-10"
+}
