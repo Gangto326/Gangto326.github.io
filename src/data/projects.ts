@@ -36,8 +36,8 @@ export const projects: Project[] = [
   {
     id: 'lidar',
     index: '02',
-    name: 'LIDAR-Hyundai',
-    nameKo: '현대제철 라이다 관제',
+    name: 'LIDAR-B2B',
+    nameKo: 'H사 라이다 관제',
     tagline: '미세먼지 라이다 센서 관제 플랫폼',
     role: 'Backend · DB · Infra',
     meta: '2025–26 · 3개월 · 2인',

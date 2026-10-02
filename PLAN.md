@@ -67,7 +67,7 @@
 - 하이라이트: 다중 AI 실시간 파이프라인(Eager 병렬+조건부 추론, 320→200→18ms), 깊이 기반 미학습 장애물 감지, LLM Pre-fetching(3.3→1.3s)
 - **확정 데모: AI 파이프라인 시뮬레이터** — 순차/Eager병렬/조건부 모드 토글 → 3개 모델 실행 바 애니메이션 + 실시간 fps 카운터 (실측 수치 하드코딩)
 
-### 2) LIDAR-Hyundai — 현대제철 미세먼지 라이다 관제 플랫폼
+### 2) LIDAR-B2B — H사 미세먼지 라이다 관제 플랫폼
 - 스택: Next.js16·React19·TS·Zustand·Tailwind / FastAPI(Py)+Spring Boot(Java) 폴리글랏 / PostgreSQL15+PostGIS·pg_partman·H3 / AWS EC2·S3
 - 역할: BE·DB·Infra, 기여 60% (3개월, 2인) · GitHub: **없음(비공개)** · 운영 samwoolidar.co.kr
 - 하이라이트: H3 Lv10 육각셀 사전집계+파티션 DROP으로 **저장 97%↓**, MULTIPOLYGON 디커플링+유클리드 근사(오차 0.1%), cell×area 도메인 분리
